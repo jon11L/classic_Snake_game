@@ -1,8 +1,7 @@
 import random
 import tkinter as tk
-# from tkinter import *
 
-from tkinter import ttk
+from tkinter import ttk, Canvas
 from tkinter.constants import *
 
 # ------------------------
@@ -18,12 +17,12 @@ from tkinter.constants import *
 
 
 
-# initialize 
+# initialize elements.
+SNAKE_COLOR = "red"
+FOOD_COLOR = "green"
+BACKGROUND_COLOR = "black"
 
-snake_color = "red"
-food_color = "green"
-background_color = "black"
-
+score= 0
 
 class Snake:
     X = 10
@@ -62,46 +61,49 @@ class Game():
 
 
 # set up screen
-root = tk.Tk()
-root.title('Snake')
-root.resizable(False, False)
+window = tk.Tk()
+window.title('Snake')
+window.resizable(False, False)
 
 
 # screen 
-window_width = 800
+window_width = 600
 window_height = 600
 
 
 # get the screen dimension
-screen_width = root.winfo_screenwidth()
-screen_height = root.winfo_screenheight()
+screen_width = window.winfo_screenwidth()
+screen_height = window.winfo_screenheight()
 
 # center the window on the screen
 center_x = int(screen_width/2 - window_width / 2)
 center_y = int(screen_height/2 - window_height / 2)
-
-
-# start the window application
+window.geometry(f"{window_width}x{window_height}+{center_x}+{center_y}")
 
 
 
-root.geometry(f"{window_width}x{window_height}+{center_x}+{center_y}")
+message = ttk.Label(window, text="Score:{}".format(score), font=('consolas', 15))
+message.pack()
 
-message = ttk.Label(root, text="Start the game.").pack()
-# message.pack()
 
 # exit button
+button_frame = ttk.Frame(window)
+button_frame.pack(side=tk.BOTTOM, fill=tk.X)
+
 exit_button = ttk.Button(
-    root,
+    button_frame,
     text='Exit',
-    command=lambda: root.quit()
+    command=lambda: window.quit()
 )
 
-exit_button.pack(
-    ipadx=1,
-    ipady=1,
-    expand=True
-)
+exit_button.pack(ipadx=1, ipady=1, expand=True)
 
 
-root.mainloop()
+canvas = Canvas(window, bg=BACKGROUND_COLOR, width=window_width, height=window_height)
+canvas.pack()
+
+
+
+
+
+window.mainloop()
