@@ -61,10 +61,15 @@ class Food:
         canvas.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=FOOD_COLOR, tag="food")
 
 
-def next_turn(snake: Snake, food: Food):
+def next_turn(snake, food):
     
+    global score 
+
     x, y = snake.coordinates[0]
 
+    print(snake.coordinates) # debugging purpose
+    print(f"new headsnake coordinate \n {snake.coordinates[0]}") # debugging purpose
+    
     if direction == "up":
         y -= SPACE_SIZE
     elif direction == "down":
@@ -74,7 +79,7 @@ def next_turn(snake: Snake, food: Food):
     elif direction == "right":
         x += SPACE_SIZE
 
-    snake.coordinates.insert(0, (x, y))
+    snake.coordinates.insert(0, [x, y])
 
     square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=SNAKE_COLOR,)
 
@@ -82,12 +87,24 @@ def next_turn(snake: Snake, food: Food):
 
     del snake.coordinates[-1]
 
-    canvas.delete(snake.squares[-1])
+    canvas.delete(snake.squares[-1]) # should not happen when head snake == food coordinates.
 
     del snake.squares[-1]
 
-    
     window.after(SPEED, next_turn, food, snake)
+
+    print(f"food coord: {food.coordinates}") # debugging purpose
+    if snake.coordinates[0] == food.coordinates: # and snake.coordinates[0[y]] == food.coordinates[1]:
+        score += 1
+        message.config(text=f"Score:{score}")
+
+        # generate food at a different location
+        canvas.delete("food")
+        x = random.randint(0, (WINDOW_WIDTH/SPACE_SIZE) - 1) * SPACE_SIZE    
+        y = random.randint(0, (WINDOW_HEIGHT/SPACE_SIZE)- 1) * SPACE_SIZE
+        food.coordinates = [x, y]
+        print(f"new food coord: {food.coordinates}") # debugging purpose
+        canvas.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=FOOD_COLOR, tag="food")
 
 
 def change_direction(new_direction):
