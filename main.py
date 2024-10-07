@@ -3,6 +3,7 @@ import tkinter as tk
 
 from tkinter import ttk, Canvas
 from tkinter.constants import *
+# from tkinter import messagebox
 
 # ------------------------
 # -- set up screen V
@@ -19,15 +20,15 @@ from tkinter.constants import *
 
 # --- initialize elements. ---
 # screen dimension
-WINDOW_WIDTH= 600
-WINDOW_HEIGHT = 600
+GAME_WIDTH= 600
+GAME_HEIGHT = 600
 # objects colors
 SNAKE_COLOR = "darkgreen"
 FOOD_COLOR = "darkred"
 BACKGROUND_COLOR = "black"
 
 SPEED = 100
-SPACE_SIZE = 40
+SPACE_SIZE = 50
 BODY_SIZE = 3
 
 score= 0
@@ -38,26 +39,32 @@ class Snake:
         self.coordinates = []
         self.squares = []
 
+        start_x = 150
+
         for i in range(0, BODY_SIZE):
-            self.coordinates.append([0, 0])
+            self.coordinates.append([start_x -(i * SPACE_SIZE), 0])
+            print(self.coordinates)
 
         for x, y in self.coordinates:
-            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=SNAKE_COLOR, tag="snake")
+            square = screen_game.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=SNAKE_COLOR, tag="snake")
             self.squares.append(square)
-
 
 class Food:
     def __init__(self):
-        # food generate at a random place in the game
-        x = random.randint(0, (WINDOW_WIDTH/SPACE_SIZE) - 1) * SPACE_SIZE	
-        y = random.randint(0, (WINDOW_HEIGHT/SPACE_SIZE)- 1) * SPACE_SIZE
+        # food generate at a random place in an empty space
+        while True:
+            x = random.randint(0, (GAME_WIDTH/SPACE_SIZE) - 1) * SPACE_SIZE	
+            y = random.randint(0, (GAME_HEIGHT/SPACE_SIZE)- 1) * SPACE_SIZE
+
+            if(x, y) not in snake.coordinates:
+                break
+
         self.coordinates = [x, y]
-
         # food shape
-        canvas.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=FOOD_COLOR, tag="food")
+        screen_game.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=FOOD_COLOR, tag="food")
 
 
-def next_turn(snake, food):
+def next_turn(snake: Snake, food: Food):
     
     global score 
 
@@ -74,26 +81,26 @@ def next_turn(snake, food):
 
     snake.coordinates.insert(0, [x, y])
 
-    square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=SNAKE_COLOR,)
-    snake.squares.insert(0, square)
-
-    # check if the snake ate the food
-    if snake.coordinates[0] == food.coordinates:
-        score += 1
-        message.config(text=f"Score:{score}")
-
-        # generate food at a different location
-        canvas.delete("food")
-        food = Food()     
-    else:
-        del snake.coordinates[-1]
-        canvas.delete(snake.squares[-1])
-        del snake.squares[-1]
-
-    # if collision it stops the game, otherwise goes to next turn.
     if check_collision(snake):
         game_over()
     else:    
+        square = screen_game.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=SNAKE_COLOR,)
+        snake.squares.insert(0, square)
+
+        # check if the snake ate the food.
+        if snake.coordinates[0] == food.coordinates:
+            score += 1
+            score_label.config(text=f"Score:{score}")
+
+            # generate food at a different location
+            screen_game.delete("food")
+            food = Food()     
+        else:
+            del snake.coordinates[-1]
+            screen_game.delete(snake.squares[-1])
+            del snake.squares[-1]
+
+        # if collision it stops the game, otherwise goes to next turn.
         window.after(SPEED, next_turn, snake, food)
 
 
@@ -101,9 +108,9 @@ def check_collision(snake):
 
     x, y = snake.coordinates[0]
 
-    if x < 0 or x >= WINDOW_WIDTH:
+    if x < 0 or x >= GAME_WIDTH:
         return True
-    elif y < 0 or y >= WINDOW_HEIGHT:
+    elif y < 0 or y >= GAME_HEIGHT:
         return True
     
     for body_part in snake.coordinates[1:]:
@@ -114,8 +121,14 @@ def check_collision(snake):
 
 def game_over():
     print("Game over!")
-    canvas.create_window(WINDOW_WIDTH/2, WINDOW_HEIGHT/2) 
-    pass
+    screen_game.create_text(screen_game.winfo_width()/2, screen_game.winfo_height()/2,
+                        font=("consolas", 60),
+                        text="Game Over",
+                        fill="red",
+                        tag="gameover",
+                        )
+
+    
 
 
 def change_direction(new_direction):
@@ -136,46 +149,49 @@ def change_direction(new_direction):
             direction = new_direction
 
 
+
+direction = 'right'
+
 # set up screen
 window = tk.Tk()
 window.title('Snake')
 window.resizable(False, False)
 
-# get the screen dimension
-screen_width = window.winfo_screenwidth()
-screen_height = window.winfo_screenheight()
 
 # display the score.
-message = ttk.Label(window, text=f"Score:{score}", font=('consolas', 20))
-message.pack()
-# center the window on the screen
-center_x = int(screen_width/2 - WINDOW_WIDTH / 2)
-center_y = int(screen_height/2 - WINDOW_HEIGHT / 2)
+score_label = ttk.Label(window, text=f"Score:{score}", font=('consolas', 20))
+# score_label.pack()
+score_label.pack() # anchor='nw', padx=10, pady=10
 
-window.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}+{center_x}+{center_y}")
-
-# exit button
-button_frame = ttk.Frame(window)
-button_frame.pack(side=tk.BOTTOM, fill=tk.X, expand=1)
+screen_game = Canvas(window, bg=BACKGROUND_COLOR, width=GAME_WIDTH, height=GAME_HEIGHT)
+screen_game.pack()
 
 exit_button = ttk.Button(
-    button_frame,
+    window,
     text='Exit',
     command=lambda: window.quit()
 )
+exit_button.pack(side=tk.BOTTOM, pady=1, ipadx=1, ipady=1, expand=True)
 
-exit_button.pack(ipadx=1, ipady=1, expand=True)
+window.update()
 
-canvas = Canvas(window, bg=BACKGROUND_COLOR, width=WINDOW_WIDTH, height=WINDOW_HEIGHT)
-canvas.pack()
+# get the screen dimension
+window_width = window.winfo_width() 
+window_height = window.winfo_height()
+screen_width = window.winfo_screenwidth()
+screen_height = window.winfo_screenheight()
+
+# center the window on the screen
+center_x = int((screen_width/2) - (window_width/2))
+center_y = int((screen_height/2) - (window_height/2))
+
+window.geometry(f"{window_width}x{window_height}+{center_x}+{center_y}")
 
 # set movement direction event
 window.bind('<Left>', lambda event: change_direction('left'))
 window.bind('<Right>', lambda event: change_direction('right'))
 window.bind('<Up>', lambda event: change_direction('up'))
 window.bind('<Down>', lambda event: change_direction('down'))
-
-direction = 'down'
 
 snake = Snake()
 food = Food()
