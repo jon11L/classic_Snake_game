@@ -27,7 +27,7 @@ SNAKE_COLOR = "darkgreen"
 FOOD_COLOR = "darkred"
 BACKGROUND_COLOR = "black"
 
-SPEED = 100
+SPEED = 120
 SPACE_SIZE = 50
 BODY_SIZE = 3
 
@@ -56,7 +56,7 @@ class Food:
             x = random.randint(0, (GAME_WIDTH/SPACE_SIZE) - 1) * SPACE_SIZE	
             y = random.randint(0, (GAME_HEIGHT/SPACE_SIZE)- 1) * SPACE_SIZE
 
-            if(x, y) not in snake.coordinates:
+            if [x, y] not in snake.coordinates:
                 break
 
         self.coordinates = [x, y]
@@ -83,6 +83,7 @@ def next_turn(snake: Snake, food: Food):
 
     if check_collision(snake):
         game_over()
+
     else:    
         square = screen_game.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=SNAKE_COLOR,)
         snake.squares.insert(0, square)
@@ -119,19 +120,9 @@ def check_collision(snake):
         
     return False
 
-def game_over():
-    print("Game over!")
-    screen_game.create_text(screen_game.winfo_width()/2, screen_game.winfo_height()/2,
-                        font=("consolas", 60),
-                        text="Game Over",
-                        fill="red",
-                        tag="gameover",
-                        )
-
-    
-
 
 def change_direction(new_direction):
+
     
     global direction
 
@@ -149,10 +140,25 @@ def change_direction(new_direction):
             direction = new_direction
 
 
+def game_over():
+    print("Game over!")
+    screen_game.create_text(screen_game.winfo_width()/2, screen_game.winfo_height()/2,
+                        font=("consolas", 60),
+                        text="Game Over",
+                        fill="red",
+                        tag="gameover",
+                        )
+    
+
+def start_game():
+    start_button.place_forget()  # Hide the start button
+    next_turn(snake, food)
+    
+
 
 direction = 'right'
 
-# set up screen
+# set up the all screen
 window = tk.Tk()
 window.title('Snake')
 window.resizable(False, False)
@@ -163,8 +169,23 @@ score_label = ttk.Label(window, text=f"Score:{score}", font=('consolas', 20))
 # score_label.pack()
 score_label.pack() # anchor='nw', padx=10, pady=10
 
+# screen gaame set up
 screen_game = Canvas(window, bg=BACKGROUND_COLOR, width=GAME_WIDTH, height=GAME_HEIGHT)
 screen_game.pack()
+
+
+start_button = tk.Button(window, text="Start", command=start_game,
+                        font=('consolas', 15, 'bold'),
+                        fg="blue",
+                        bg="lightblue",
+                        padx=10, pady=10,
+                        borderwidth=1,
+                        relief=RAISED,
+                        overrelief=GROOVE,
+                        activebackground="lightgray",
+                        )
+start_button.place(relx=0.5, rely=0.5, anchor=CENTER)
+
 
 exit_button = ttk.Button(
     window,
@@ -172,6 +193,7 @@ exit_button = ttk.Button(
     command=lambda: window.quit()
 )
 exit_button.pack(side=tk.BOTTOM, pady=1, ipadx=1, ipady=1, expand=True)
+
 
 window.update()
 
@@ -196,6 +218,6 @@ window.bind('<Down>', lambda event: change_direction('down'))
 snake = Snake()
 food = Food()
 
-next_turn(snake, food)
+# next_turn(snake, food)
 
 window.mainloop()
