@@ -34,6 +34,7 @@ class Game():
 
         self.score= 0
         self.direction = "right"
+        self.time = time.time()
 
         # set up the all screen
         self.window = tk.Tk()
@@ -63,6 +64,20 @@ class Game():
                                 activebackground="lightgray",
                                 )
         self.start_button.place(relx=0.5, rely=0.5, anchor=CENTER)
+
+
+        # --- creating a restart button when game over---------------
+        self.restart_button = tk.Button(self.window, text="Play again", command= self.restart_game,
+                                font=('consolas', 15, 'bold'),
+                                fg="blue",
+                                bg="lightblue",
+                                padx=10, pady=10,
+                                borderwidth=1,
+                                relief=RAISED,
+                                overrelief=GROOVE,
+                                activebackground="lightgray",
+                                )
+
 
         exit_button = ttk.Button(self.window,
                                 text='Exit',
@@ -107,7 +122,6 @@ class Game():
         self.food = Food(self)
         self.next_turn()
     
-
 
     def next_turn(self):
 
@@ -178,12 +192,36 @@ class Game():
 
     def game_over(self):
         print("Game over!")
-        self.screen_game.create_text(self.screen_game.winfo_width()/2, self.screen_game.winfo_height()/2,
-                            font=("consolas", 60),
+        self.screen_game.create_text(self.screen_game.winfo_width()/2, self.screen_game.winfo_height()/2.5,
+                            font=("consolas", 80),
                             text="Game Over",
                             fill="red",
                             tag="gameover",
                             )
+
+        # ---set the the restart button after a little delay---------------
+        self.window.after(500, lambda: self.restart_button.place(relx=0.5, rely=0.75, anchor=CENTER))
+
+
+    def restart_game(self):
+        self.restart_button.place_forget()
+        self.screen_game.delete("all")
+        print("Restarting the game!")
+
+        # Reset score
+        self.score = 0
+        self.score_label.config(text=f"Score: {self.score}")
+
+        # Recreate the snake and food instances
+        self.snake = Snake(self)
+        self.food = Food(self)
+
+        # reset direction
+        self.direction = "right"
+
+        self.next_turn()
+
+
 
 
 class Snake:
@@ -197,6 +235,7 @@ class Snake:
 
         for i in range(0, self.body_size):
             self.coordinates.append([start_x -(i * game.SPACE_SIZE), 0])
+            print(self.coordinates)
 
         for x, y in self.coordinates:
             square = game.screen_game.create_rectangle(x, y, x + game.SPACE_SIZE, y + game.SPACE_SIZE, fill=game.SNAKE_COLOR, tag="snake")
