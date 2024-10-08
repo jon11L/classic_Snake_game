@@ -7,7 +7,7 @@ from tkinter.constants import *
 
 class Game():
     def __init__(self):
-        # ------ initialize Constant elements. ------
+        # --- initialize Constant elements. ---
         # screen dimension
         self.GAME_WIDTH = 600
         self.GAME_HEIGHT = 600
@@ -65,7 +65,7 @@ class Game():
                                 text='Exit',
                                 command=lambda: self.window.quit()
                                 )
-        exit_button.pack(side=tk.BOTTOM, pady=1, ipadx=1, ipady=1, expand=True)
+        exit_button.pack(side=tk.BOTTOM, pady=1, ipadx=1, ipady=5, expand=True, anchor="s")
 
         self.center_window()
         self.bind_keys()
