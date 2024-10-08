@@ -4,18 +4,6 @@ import tkinter as tk
 from tkinter import ttk, Canvas
 from tkinter.constants import *
 
-# ------------------------
-# -- set up screen V
-# -- set snake and apple objects   V
-# -- set objects on the screen : apple and snake V
-# -- set movement direction event V
-# - wall limit and collision detection V
-# -- grow size snake when eating an apple V
-# -- win event
-# lost event V
-# start again V
-# time
-# -----------------------------
 
 class Game():
     def __init__(self):
@@ -28,72 +16,41 @@ class Game():
         self.FOOD_COLOR = "darkred"
         self.BACKGROUND_COLOR = "black"
 
-        self.SPEED = 120
+        self.SPEED = 200
         self.SPACE_SIZE = 50
         self.BODY_SIZE = 3
-
-        self.score = 0
-        self.direction = "right"
-        self.start_time = 0
-        self.game_time = 0
-
-        # use to check if games end, to stop the timer
-        self.is_game_over = False
 
         # set up the all screen
         self.window = tk.Tk()
         self.window.title('Snake')
         self.window.resizable(False, False)
         
-
         # Use grid for better control of placement
         self.top_frame = ttk.Frame(self.window)
         self.top_frame.pack(fill='x') 
+        self.top_frame.grid_columnconfigure(0, weight=1)
+        self.top_frame.grid_columnconfigure(1, weight=1)
 
         # Initialize score label
-        self.score_label = tk.Label(self.top_frame, text=f"Score: {self.score}", font=('consolas', 20))
+        self.score_label = tk.Label(self.top_frame, text=f"Score: 0", font=('consolas', 15))
         self.score_label.grid(row=0, column=0, sticky='e', padx=50)  # Align to the left with padding
 
         # Initialize time label
-        self.time_label = tk.Label(self.top_frame, text=f"Time: 00:00", font=('consolas', 20))
+        self.time_label = tk.Label(self.top_frame, text=f"Time: 00:00", font=('consolas', 15))
         self.time_label.grid(row=0, column=1, sticky='w', padx=50)  # Align to the right with padding
 
-        # Configure the frame to make sure the time is on the right
-        self.top_frame.grid_columnconfigure(0, weight=1)
-        self.top_frame.grid_columnconfigure(1, weight=1)
 
 
         # screen game set up
         self.screen_game = Canvas(self.window, bg=self.BACKGROUND_COLOR, width=self.GAME_WIDTH, height=self.GAME_HEIGHT)
         self.screen_game.pack()
         
-
         # create a start button to click, in the window before the game starts
-        self.start_button = tk.Button(self.window, text="Start", command=self.start_game,
-                                font=('consolas', 15, 'bold'),
-                                fg="blue",
-                                bg="lightblue",
-                                padx=10, pady=10,
-                                borderwidth=1,
-                                relief=RAISED,
-                                overrelief=GROOVE,
-                                activebackground="lightgray",
-                                )
+        self.start_button = self.create_button("Start", self.start_game)
         self.start_button.place(relx=0.5, rely=0.5, anchor=CENTER)
 
-
         # --- creating a restart button when game over---------------
-        self.restart_button = tk.Button(self.window, text="Play again", command= self.restart_game,
-                                font=('consolas', 15, 'bold'),
-                                fg="blue",
-                                bg="lightblue",
-                                padx=10, pady=10,
-                                borderwidth=1,
-                                relief=RAISED,
-                                overrelief=GROOVE,
-                                activebackground="lightgray",
-                                )
-
+        self.restart_button = self.create_button("Restart", self.restart_game)
 
         exit_button = ttk.Button(self.window,
                                 text='Exit',
@@ -103,9 +60,18 @@ class Game():
 
         self.center_window()
         self.bind_keys()
+        
 
-        self.snake = None
-        self.food = None
+    def create_button(self, text, command):
+        return tk.Button(self.window, text=text, command=command,
+                        font=('consolas', 15, 'bold'),
+                        fg="blue", bg="lightblue",
+                        padx=10, pady=10,
+                        borderwidth=1,
+                        relief=RAISED,
+                        overrelief=GROOVE,
+                        activebackground="lightgray",
+                        )
 
 
     def center_window(self):
@@ -130,29 +96,39 @@ class Game():
         self.window.bind('<Up>', lambda event: self.change_direction('up'))
         self.window.bind('<Down>', lambda event: self.change_direction('down'))
 
-
-    def start_game(self):
-        ''' instantiate game objects, such like the Food, Snake object, the score and time'''
-        self.start_button.place_forget()  # Hide the start button
+    
+    def initialise_game(self):
+        ''' instantiate/reset game objects, like Food, Snake, the score and time'''
+        self.screen_game.delete("all")
         self.snake = Snake(self)
         self.food = Food(self)
+        self.direction = "right"
+
         self.is_game_over = False
+
+        self.score = 0
+        self.score_label.config(text=f"Score: {self.score}")
+
         self.start_time = time.time()
-        self.update_timer()
+        self.timer()
+
+
+    def start_game(self):
+        self.start_button.place_forget()  # Hide the start button
+        self.initialise_game()
         self.next_turn()
 
 
-    def update_timer(self):
+    def timer(self):
         '''Update the timer display, stops when game is over.'''
         if not self.is_game_over:
-            self.game_time = int(time.time() - self.start_time)
-            minutes, seconds = divmod(self.game_time, 60)
-            self.time_label.config(text=f"Time: {minutes:02d}:{seconds:02d}")
-            self.window.after(1000, self.update_timer)
+            self.game_time = time.time() - self.start_time
+            formatted_time = time.strftime("%M:%S", time.gmtime(self.game_time))
+            self.time_label.config(text=f"Time: {formatted_time}")
+            self.window.after(1000, self.timer)
 
     
     def next_turn(self):
-
         x, y = self.snake.coordinates[0]
 
         if self.direction == "up":
@@ -187,7 +163,7 @@ class Game():
 
             # if collision it stops the game, otherwise goes to next turn.
             self.window.after(self.SPEED, self.next_turn)
-            self.update_timer()
+            self.timer()
 
 
     def check_collision(self):
@@ -234,26 +210,9 @@ class Game():
 
     def restart_game(self):
         self.restart_button.place_forget()
-        self.screen_game.delete("all")
+        # self.screen_game.delete("all")
         print("Restarting the game!")
-
-        # reset timer
-        self.start_time = time.time()
-        self.is_game_over = False
-
-        # Reset score
-        self.score = 0
-        self.score_label.config(text=f"Score: {self.score}")
-
-
-        # reset direction
-        self.direction = "right"
-
-        # Recreate the snake and food instances
-        self.snake = Snake(self)
-        self.food = Food(self)
-
-        self.update_timer()
+        self.initialise_game()
         self.next_turn()
 
 
@@ -288,7 +247,7 @@ class Food:
                 break
 
         self.coordinates = [x, y]
-        # food shape
+        # create the food shape to be on the canvas
         game.screen_game.create_oval(x, y, x + game.SPACE_SIZE, y + game.SPACE_SIZE, fill=game.FOOD_COLOR, tag="food")
 
 
