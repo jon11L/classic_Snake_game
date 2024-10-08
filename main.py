@@ -7,7 +7,7 @@ from tkinter.constants import *
 
 class Game():
     def __init__(self):
-        # --- initialize elements. ---
+        # ------ initialize Constant elements. ------
         # screen dimension
         self.GAME_WIDTH = 600
         self.GAME_HEIGHT = 600
@@ -20,7 +20,7 @@ class Game():
         self.SPACE_SIZE = 50
         self.BODY_SIZE = 3
 
-        # set up the all screen
+        # --- set up the all screen ---
         self.window = tk.Tk()
         self.window.title('Snake')
         self.window.resizable(False, False)
@@ -29,29 +29,38 @@ class Game():
         self.top_frame = ttk.Frame(self.window)
         self.top_frame.pack(fill='x') 
         self.top_frame.grid_columnconfigure(0, weight=1)
-        self.top_frame.grid_columnconfigure(1, weight=1)
+        self.top_frame.grid_columnconfigure(1, weight=0)
+        self.top_frame.grid_columnconfigure(2, weight=1)
 
-        # Initialize score label
+        # --- Initialize score label ---
         self.score_label = tk.Label(self.top_frame, text=f"Score: 0", font=('consolas', 15))
         self.score_label.grid(row=0, column=0, sticky='e', padx=50)  # Align to the left with padding
 
-        # Initialize time label
+        # --- Initialize time label ---
         self.time_label = tk.Label(self.top_frame, text=f"Time: 00:00", font=('consolas', 15))
-        self.time_label.grid(row=0, column=1, sticky='w', padx=50)  # Align to the right with padding
+        self.time_label.grid(row=0, column=2, sticky='w', padx=50)  # Align to the right with padding
 
+        self.is_game_paused = False
 
+        # --- pause button ---
+        self.pause_button = tk.Button(self.top_frame, text=f"Pause", font=('consolas', 15),
+                                    command=self.tooggle_pause,
+                                    bg="lightblue",
+                                    fg="blue",
+                                    relief="groove")
 
-        # screen game set up
+        # --- screen game set up ---
         self.screen_game = Canvas(self.window, bg=self.BACKGROUND_COLOR, width=self.GAME_WIDTH, height=self.GAME_HEIGHT)
         self.screen_game.pack()
         
-        # create a start button to click, in the window before the game starts
+        # --- create a start button for the game to start ---
         self.start_button = self.create_button("Start", self.start_game)
         self.start_button.place(relx=0.5, rely=0.5, anchor=CENTER)
 
-        # --- creating a restart button when game over---------------
+        # --- creating a restart button when game over ---
         self.restart_button = self.create_button("Restart", self.restart_game)
 
+        # --- creating a exit button to quit the game ---  
         exit_button = ttk.Button(self.window,
                                 text='Exit',
                                 command=lambda: self.window.quit()
@@ -72,7 +81,7 @@ class Game():
                         overrelief=GROOVE,
                         activebackground="lightgray",
                         )
-
+    
 
     def center_window(self):
         self.window.update()
@@ -88,6 +97,18 @@ class Game():
         center_y = int((screen_height/2) - (window_height/2))
         self.window.geometry(f"{window_width}x{window_height}+{center_x}+{center_y}")
 
+
+    def tooggle_pause(self):
+        if not self.is_game_paused:
+            self.is_game_paused = True
+            self.pause_button.config(text="Resume")
+            self.pause_time = time.time()
+        else:
+            self.is_game_paused = False
+            self.pause_button.config(text="Pause")
+            self.start_time += time.time() - self.pause_time
+            self.next_turn()  
+    
 
     def bind_keys(self):
         # set movement direction event
@@ -114,14 +135,19 @@ class Game():
 
 
     def start_game(self):
+        # self.is_game_started = True
         self.start_button.place_forget()  # Hide the start button
         self.initialise_game()
+
+        # initialize the pause button on screen after the game starts.
+        self.pause_button.grid(row=0, column=1, padx=50)
+
         self.next_turn()
 
 
     def timer(self):
         '''Update the timer display, stops when game is over.'''
-        if not self.is_game_over:
+        if not self.is_game_over and not self.is_game_paused:
             self.game_time = time.time() - self.start_time
             formatted_time = time.strftime("%M:%S", time.gmtime(self.game_time))
             self.time_label.config(text=f"Time: {formatted_time}")
@@ -129,6 +155,10 @@ class Game():
 
     
     def next_turn(self):
+
+        if self.is_game_paused:
+            return
+        
         x, y = self.snake.coordinates[0]
 
         if self.direction == "up":
@@ -142,6 +172,7 @@ class Game():
 
         self.snake.coordinates.insert(0, [x, y])
 
+        # if collision it stops the game, otherwise goes to next turn.
         if self.check_collision():
             self.game_over()
 
@@ -161,7 +192,6 @@ class Game():
                 self.screen_game.delete(self.snake.squares[-1])
                 del self.snake.squares[-1]
 
-            # if collision it stops the game, otherwise goes to next turn.
             self.window.after(self.SPEED, self.next_turn)
             self.timer()
 
