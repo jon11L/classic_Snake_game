@@ -9,16 +9,18 @@ class Game():
     def __init__(self):
         # --- initialize Constant elements. ---
         # screen dimension
-        self.GAME_WIDTH = 600
-        self.GAME_HEIGHT = 600
-        # objects colors
-        self.SNAKE_COLOR = "darkgreen"
+        self.GAME_WIDTH = 500
+        self.GAME_HEIGHT = 500
+        # objects colors & sizes
+        self.SNAKE_COLOR = "green"
         self.FOOD_COLOR = "darkred"
         self.BACKGROUND_COLOR = "black"
-
-        self.SPEED = 200
         self.SPACE_SIZE = 50
-        self.BODY_SIZE = 3
+        self.BODY_SIZE = 3 # base size of snake's body
+
+        self.BASE_SPEED = 300 # default speed when game starts
+        self.MIN_SPEED = 50   # Minimum speed (maximum difficulty)
+
 
         # --- set up the all screen ---
         self.window = tk.Tk()
@@ -40,9 +42,9 @@ class Game():
         self.time_label = tk.Label(self.top_frame, text=f"Time: 00:00", font=('consolas', 15))
         self.time_label.grid(row=0, column=2, sticky='w', padx=50)  # Align to the right with padding
 
-        self.is_game_paused = False
 
         # --- pause button ---
+        self.is_game_paused = False
         self.pause_button = tk.Button(self.top_frame, text=f"Pause", font=('consolas', 15),
                                     command=self.tooggle_pause,
                                     bg="lightblue",
@@ -99,7 +101,7 @@ class Game():
 
 
     def tooggle_pause(self):
-        if not self.is_game_paused:
+        if not self.is_game_paused and self.is_game_over == False:
             self.is_game_paused = True
             self.pause_button.config(text="Resume")
             self.pause_time = time.time()
@@ -124,9 +126,7 @@ class Game():
         self.snake = Snake(self)
         self.food = Food(self)
         self.direction = "right"
-
         self.is_game_over = False
-
         self.score = 0
         self.score_label.config(text=f"Score: {self.score}")
 
@@ -136,11 +136,12 @@ class Game():
 
     def start_game(self):
         # self.is_game_started = True
-        self.start_button.place_forget()  # Hide the start button
+        self.start_button.place_forget()  # remove the 'start' button.
         self.initialise_game()
+        print("Game starts!\n")
 
         # initialize the pause button on screen after the game starts.
-        self.pause_button.grid(row=0, column=1, padx=50)
+        self.pause_button.grid(row=0, column=1)
 
         self.next_turn()
 
@@ -149,9 +150,9 @@ class Game():
         '''Update the timer display, stops when game is over.'''
         if not self.is_game_over and not self.is_game_paused:
             self.game_time = time.time() - self.start_time
-            formatted_time = time.strftime("%M:%S", time.gmtime(self.game_time))
-            self.time_label.config(text=f"Time: {formatted_time}")
-            self.window.after(1000, self.timer)
+            self.formatted_time = time.strftime("%M:%S", time.gmtime(self.game_time))
+            self.time_label.config(text=f"Time: {self.formatted_time}")
+            self.window.after(100, self.timer)
 
     
     def next_turn(self):
@@ -175,9 +176,24 @@ class Game():
         # if collision it stops the game, otherwise goes to next turn.
         if self.check_collision():
             self.game_over()
-
-        else:    
-            square = self.screen_game.create_rectangle(x, y, x + self.SPACE_SIZE, y + self.SPACE_SIZE, fill=self.SNAKE_COLOR,)
+        else:
+            # create the new snake's head
+            square = self.screen_game.create_rectangle(
+                x, y,
+                x + self.SPACE_SIZE, y + self.SPACE_SIZE,
+                fill="lightgreen", outline="green", width=3,
+                tag="snake"
+                )
+            
+            # Update previous head to body appearance
+            if len(self.snake.squares) > 0:
+                self.screen_game.itemconfig(
+                    self.snake.squares[0],
+                    fill=self.SNAKE_COLOR,
+                    width=2,
+                    outline="lightgreen",
+                    tag="snake"
+                )
             self.snake.squares.insert(0, square)
 
             # check if the snake ate the food.
@@ -192,7 +208,10 @@ class Game():
                 self.screen_game.delete(self.snake.squares[-1])
                 del self.snake.squares[-1]
 
-            self.window.after(self.SPEED, self.next_turn)
+            # setting a speed that increases (update faster) as the score increases
+            self.SPEED = max(self.MIN_SPEED, self.BASE_SPEED - (self.score * 2))
+
+            self.window.after((self.SPEED - (self.score*2)), self.next_turn)
             self.timer()
 
 
@@ -227,6 +246,8 @@ class Game():
     def game_over(self):
         self.is_game_over = True
         print("Game over!")
+        print(f"** best score: {self.score} -- in {self.formatted_time}s **")
+
         self.screen_game.create_text(self.screen_game.winfo_width()/2, self.screen_game.winfo_height()/2.5,
                             font=("consolas", 80),
                             text="Game Over",
@@ -240,8 +261,7 @@ class Game():
 
     def restart_game(self):
         self.restart_button.place_forget()
-        # self.screen_game.delete("all")
-        print("Restarting the game!")
+        print("\nRestarting the game!\n")
         self.initialise_game()
         self.next_turn()
 
@@ -257,12 +277,23 @@ class Snake:
 
         for i in range(0, self.body_size):
             self.coordinates.append([start_x -(i * game.SPACE_SIZE), 0])
-            print(self.coordinates)
 
-        for x, y in self.coordinates:
-            square = game.screen_game.create_rectangle(x, y, x + game.SPACE_SIZE, y + game.SPACE_SIZE, fill=game.SNAKE_COLOR, tag="snake")
+        for i, (x, y) in enumerate(self.coordinates):
+            if i == 0:
+                # create the snake's head.
+                square = game.screen_game.create_rectangle(
+                    x, y, x + game.SPACE_SIZE, y + game.SPACE_SIZE,
+                    fill="lightgreen", outline="green", width=3,
+                    tag="snake"
+                    )
+            else:
+                # create snake's body.
+                square = game.screen_game.create_rectangle(
+                    x, y, x + game.SPACE_SIZE, y + game.SPACE_SIZE,
+                    fill="green", outline="lightgreen", width=1,
+                    tag="snake"
+                    )
             self.squares.append(square)
-
 
 class Food:
     def __init__(self, game):
@@ -278,7 +309,7 @@ class Food:
 
         self.coordinates = [x, y]
         # create the food shape to be on the canvas
-        game.screen_game.create_oval(x, y, x + game.SPACE_SIZE, y + game.SPACE_SIZE, fill=game.FOOD_COLOR, tag="food")
+        game.screen_game.create_oval(x+5, y+5, x + game.SPACE_SIZE -5 , (y + game.SPACE_SIZE) -5, fill=game.FOOD_COLOR, outline="purple", width=3, tag="food")
 
 
 if __name__ == '__main__':
