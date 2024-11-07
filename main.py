@@ -18,9 +18,8 @@ class Game():
         self.SPACE_SIZE = 50
         self.BODY_SIZE = 3 # base size of snake's body
 
-        self.BASE_SPEED = 300 # default speed when game starts
+        self.BASE_SPEED = 500 # default speed when game starts
         self.MIN_SPEED = 50   # Minimum speed (maximum difficulty)
-
 
         # --- set up the all screen ---
         self.window = tk.Tk()
@@ -41,7 +40,6 @@ class Game():
         # --- Initialize time label ---
         self.time_label = tk.Label(self.top_frame, text=f"Time: 00:00", font=('consolas', 15))
         self.time_label.grid(row=0, column=2, sticky='w', padx=50)  # Align to the right with padding
-
 
         # --- pause button ---
         self.is_game_paused = False
@@ -71,7 +69,7 @@ class Game():
 
         self.center_window()
         self.bind_keys()
-        
+
 
     def create_button(self, text, command):
         return tk.Button(self.window, text=text, command=command,
@@ -102,10 +100,12 @@ class Game():
 
     def tooggle_pause(self):
         if not self.is_game_paused and self.is_game_over == False:
+            print("pause.")
             self.is_game_paused = True
             self.pause_button.config(text="Resume")
             self.pause_time = time.time()
         else:
+            print("resume.")
             self.is_game_paused = False
             self.pause_button.config(text="Pause")
             self.start_time += time.time() - self.pause_time
@@ -135,14 +135,11 @@ class Game():
 
 
     def start_game(self):
-        # self.is_game_started = True
         self.start_button.place_forget()  # remove the 'start' button.
         self.initialise_game()
         print("Game starts!\n")
-
         # initialize the pause button on screen after the game starts.
         self.pause_button.grid(row=0, column=1)
-
         self.next_turn()
 
 
@@ -160,6 +157,11 @@ class Game():
         if self.is_game_paused:
             return
         
+        # get the new validated direction from the snake
+        next_direction = self.snake.send_direction()
+        if next_direction:
+            self.direction = next_direction
+
         x, y = self.snake.coordinates[0]
 
         if self.direction == "up":
@@ -208,10 +210,10 @@ class Game():
                 self.screen_game.delete(self.snake.squares[-1])
                 del self.snake.squares[-1]
 
-            # setting a speed that increases (update faster) as the score increases
-            self.SPEED = max(self.MIN_SPEED, self.BASE_SPEED - (self.score * 2))
+            # adjust the speed as the score increases.
+            self.current_speed = max(self.MIN_SPEED, self.BASE_SPEED - (self.score * 5))
 
-            self.window.after((self.SPEED - (self.score*2)), self.next_turn)
+            self.window.after(self.current_speed, self.next_turn)
             self.timer()
 
 
@@ -229,18 +231,12 @@ class Game():
                 return True
 
         return False
-    
+
 
     def change_direction(self, new_direction):
+        ''' send the new direction input to the snake queue direction for check validity'''
+        self.snake.queue_direction(new_direction)
 
-        if new_direction == 'left' and self.direction!= 'right':
-            self.direction = new_direction
-        elif new_direction == 'right' and self.direction!= 'left':
-            self.direction = new_direction
-        elif new_direction == 'up' and self.direction!= 'down':
-            self.direction = new_direction
-        elif new_direction == 'down' and self.direction!= 'up':
-            self.direction = new_direction
 
 
     def game_over(self):
@@ -272,6 +268,7 @@ class Snake:
         self.body_size = game.BODY_SIZE
         self.coordinates = []
         self.squares = []
+        self.direction_queue = [] # Queue to handle rapid direction changes.
 
         start_x = 150
 
@@ -294,6 +291,35 @@ class Snake:
                     tag="snake"
                     )
             self.squares.append(square)
+
+
+    def queue_direction(self, new_direction):
+        '''add new direction to queue to check if move is valid'''
+        if not self.direction_queue:
+            current_direction =  self.game.direction
+            print(current_direction) # debug purpose
+        else:
+            current_direction = self.direction_queue[-1]
+
+        # check if new direction is valid and not opposite to current direction.
+        if ((new_direction == "left" and current_direction != "right") or
+            (new_direction == "right" and current_direction != "left") or
+            (new_direction == "up" and current_direction != "down") or
+            (new_direction == "down" and current_direction!= "up")):
+
+            # add the new direction to queue only if valid and if the queue is not 'full'
+            if not self.direction_queue or (new_direction != current_direction and len(self.direction_queue) < 2):
+                self.direction_queue.append(new_direction)
+                print(self.direction_queue)  # debug purpose
+
+    
+    def send_direction(self):
+        '''send the direction from the queue to the snake'''
+        if self.direction_queue:
+            return self.direction_queue.pop(0)
+        else:
+            return self.game.direction
+
 
 class Food:
     def __init__(self, game):
