@@ -19,7 +19,9 @@ class Game():
         self.BODY_SIZE = 3 # base size of snake's body
 
         self.BASE_SPEED = 500 # default speed when game starts
-        self.MIN_SPEED = 50   # Minimum speed (maximum difficulty)
+        self.MAX_SPEED = 50   # Minimum speed (maximum difficulty)
+
+        self.game_version = None # track the game version
 
         # --- set up the all screen ---
         self.window = tk.Tk()
@@ -52,13 +54,22 @@ class Game():
         # --- screen game set up ---
         self.screen_game = Canvas(self.window, bg=self.BACKGROUND_COLOR, width=self.GAME_WIDTH, height=self.GAME_HEIGHT)
         self.screen_game.pack()
-        
-        # --- create a start button for the game to start ---
-        self.start_button = self.create_button("Start", self.start_game)
-        self.start_button.place(relx=0.5, rely=0.5, anchor=CENTER)
 
         # --- creating a restart button when game over ---
         self.restart_button = self.create_button("Restart", self.restart_game)
+
+        # --- buttons to give in between the two different game's options 
+        self.version_game_button_1 = self.create_button(
+                                                    text="Version 1: Wall limitation / OFF.",
+                                                    command=lambda: self.start_game_with_mode(1)
+                                                    )
+        self.version_game_button_1.place(relx=0.5, rely=0.45, anchor=CENTER)
+
+        self.version_game_button_2 = self.create_button(
+                                                    text="version 2: Wall limitation / ON. ",
+                                                    command=lambda: self.start_game_with_mode(2)
+                                                    )
+        self.version_game_button_2.place(relx=0.5, rely=0.55, anchor=CENTER)
 
         # --- creating a exit button to quit the game ---  
         exit_button = ttk.Button(self.window,
@@ -119,6 +130,18 @@ class Game():
         self.window.bind('<Up>', lambda event: self.change_direction('up'))
         self.window.bind('<Down>', lambda event: self.change_direction('down'))
 
+
+    def start_game_with_mode(self, version):
+        """Start the game with selected mode"""
+        self.game_version = version
+        # Remove welcome screen
+        self.version_game_button_1.place_forget()
+        self.version_game_button_2.place_forget()
+
+        # --- create a start button for the game to start ---
+        self.start_button = self.create_button("Start", self.start_game)
+        self.start_button.place(relx=0.5, rely=0.5, anchor=CENTER)
+
     
     def initialise_game(self):
         ''' instantiate/reset game objects, like Food, Snake, the score and time'''
@@ -153,6 +176,8 @@ class Game():
 
     
     def next_turn(self):
+        '''Move the snake in the current direction and check for collision,
+            update the snake position on the canvas'''
 
         if self.is_game_paused:
             return
@@ -172,6 +197,18 @@ class Game():
             x -= self.SPACE_SIZE
         elif self.direction == "right":
             x += self.SPACE_SIZE
+
+        # if snake goes above the wall, it returns the opposite side
+        if self.game_version == 1:
+            if x < 0:
+                x = self.GAME_WIDTH - self.SPACE_SIZE 
+            elif x >= self.GAME_WIDTH:
+                x = 0
+        
+            if y < 0:
+                y = self.GAME_HEIGHT - self.SPACE_SIZE
+            if y >= 500:
+                y = 0
 
         self.snake.coordinates.insert(0, [x, y])
 
@@ -211,7 +248,7 @@ class Game():
                 del self.snake.squares[-1]
 
             # adjust the speed as the score increases.
-            self.current_speed = max(self.MIN_SPEED, self.BASE_SPEED - (self.score * 5))
+            self.current_speed = max(self.MAX_SPEED, self.BASE_SPEED - (self.score * 5))
 
             self.window.after(self.current_speed, self.next_turn)
             self.timer()
@@ -221,10 +258,12 @@ class Game():
 
         x, y = self.snake.coordinates[0]
 
-        if x < 0 or x >= self.GAME_WIDTH:
-            return True
-        elif y < 0 or y >= self.GAME_HEIGHT:
-            return True
+        if self.game_version == 2:
+        # --- wall collision is activated ---
+            if x < 0 or x >= self.GAME_WIDTH:
+                return True
+            elif y < 0 or y >= self.GAME_HEIGHT:
+                return True
 
         for body_part in self.snake.coordinates[1:]:
             if self.snake.coordinates[0] == body_part:
@@ -245,7 +284,7 @@ class Game():
         print(f"** best score: {self.score} -- in {self.formatted_time}s **")
 
         self.screen_game.create_text(self.screen_game.winfo_width()/2, self.screen_game.winfo_height()/2.5,
-                            font=("consolas", 80),
+                            font=("consolas", 70),
                             text="Game Over",
                             fill="red",
                             tag="gameover",
