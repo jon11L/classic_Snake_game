@@ -298,6 +298,9 @@ class Snake:
         if not self.direction_queue:
             current_direction =  self.game.direction
             print(current_direction) # debug purpose
+        elif len(self.direction_queue) > 1:
+            self.direction_queue.pop(1)
+            current_direction = self.direction_queue[-1]
         else:
             current_direction = self.direction_queue[-1]
 
