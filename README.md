@@ -1,6 +1,6 @@
 # classic Snake game
 
-Building the classic snake game using (and learning Tkinter module).
+### Building the classic snake game with Tkinter module).
 
 - The game is as usual the snake grows when eating an apple. and is done so  with checking and udating coordinates of the block representations for the objects Snake and Food.
 
@@ -9,10 +9,13 @@ Building the classic snake game using (and learning Tkinter module).
 - Timer and Score widgets. Reset to 0 on a new party.
 - Restart button feature for continous running of the program without having to quit and re run.
 - Pause/ Resume feature.
+- Best score saved (new Feature added.) - show the top 3 score at the end, in the console at the moment.
+
 
 self.BASE_SPEED and self.MAX_SPEED can be edited at the top of the Game class 
 -   BASE_speed to change the speed of the game at the beginning.
--   MAX_SPEED to change how fast the snake moves as the score increases.
+-   MAX_SPEED Set how fast the snake will move at it's maximum speed.
+- 
 
 
 

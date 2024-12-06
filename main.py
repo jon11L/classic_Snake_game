@@ -2,11 +2,9 @@ import os
 import json
 import random, time, datetime
 
-
 import tkinter as tk
 from tkinter import ttk, Canvas
 from tkinter.constants import *
-
 
 class Game():
     def __init__(self):
@@ -58,21 +56,21 @@ class Game():
         self.screen_game = Canvas(self.window, bg=self.BACKGROUND_COLOR, width=self.GAME_WIDTH, height=self.GAME_HEIGHT)
         self.screen_game.pack()
 
-        # --- creating a restart button when game over ---
+        # --- creating a restart button when game over // activated later in the app ---
         self.restart_button = self.create_button("Restart", self.restart_game)
 
-        # --- buttons to give in between the two different game's options 
+
+        # --- buttons to give in between the two different game's options // activated later in the app ---
         self.version_game_button_1 = self.create_button(
                                                     text="Version 1: Wall limitation / OFF.",
                                                     command=lambda: self.start_game_with_mode(1)
                                                     )
-        self.version_game_button_1.place(relx=0.5, rely=0.45, anchor=CENTER)
 
         self.version_game_button_2 = self.create_button(
                                                     text="version 2: Wall limitation / ON. ",
                                                     command=lambda: self.start_game_with_mode(2)
                                                     )
-        self.version_game_button_2.place(relx=0.5, rely=0.55, anchor=CENTER)
+
 
         # --- creating a exit button to quit the game ---  
         exit_button = ttk.Button(self.window,
@@ -84,6 +82,9 @@ class Game():
         self.center_window()
         self.bind_keys()
 
+        # --- create a start button for the game to start ---
+        self.start_button = self.create_button("Start", self.start_game)
+        self.start_button.place(relx=0.5, rely=0.5, anchor=CENTER)
 
 
     def create_button(self, text, command):
@@ -113,46 +114,72 @@ class Game():
         self.window.geometry(f"{window_width}x{window_height}+{center_x}+{center_y}")
 
 
-    def tooggle_pause(self):
-        # try:
-            if not self.is_game_paused and self.is_game_over == False:
-                print("Game paused.")
-                self.is_game_paused = True
-                self.pause_button.config(text="Resume")
-                self.pause_time = time.time()
-            else:
-                print("Game resumed.")
-                self.is_game_paused = False
-                self.pause_button.config(text="Pause")
-                self.start_time += time.time() - self.pause_time
-                self.next_turn()
-        # except Exception as e:
-            # print(f"Game cannot be paused now.")
-    
-
     def bind_keys(self):
-        # set movement direction event
+        '''set movement direction event'''
         self.window.bind('<Left>', lambda event: self.change_direction('left'))
         self.window.bind('<Right>', lambda event: self.change_direction('right'))
         self.window.bind('<Up>', lambda event: self.change_direction('up'))
         self.window.bind('<Down>', lambda event: self.change_direction('down'))
 
 
+    def unbind_keys(self):
+        '''Remove the key bindings.'''
+        self.window.unbind('<Left>')
+        self.window.unbind('<Right>')
+        self.window.unbind('<Up>')
+        self.window.unbind('<Down>')
+
+
+    def tooggle_pause(self):
+
+        if not self.is_game_paused and self.is_game_over == False:
+            print("Game paused.")
+            self.is_game_paused = True
+            self.pause_button.config(text="Resume")
+            self.pause_time = time.time()
+        else:
+            print("Game resumed.")
+            self.is_game_paused = False
+            self.pause_button.config(text="Pause")
+            self.start_time += time.time() - self.pause_time
+            self.next_turn()
+
+    def timer(self):
+        '''Update the timer display, stops when game is over.'''
+        if not self.is_game_over and not self.is_game_paused:
+            self.game_time = time.time() - self.start_time
+            self.formatted_time = time.strftime("%M:%S", time.gmtime(self.game_time))
+            self.time_label.config(text=f"Time: {self.formatted_time}")
+            self.window.after(100, self.timer)
+
+
+    def choose_game_mode(self):
+        ''' Allow user to choose the game mode.'''
+        # clean the screen of old objects (snake, food, message...)
+        self.screen_game.delete("all")
+
+        # Display the two game mode options.
+        self.version_game_button_1.place(relx=0.5, rely=0.45, anchor=CENTER)
+        self.version_game_button_2.place(relx=0.5, rely=0.55, anchor=CENTER)
+
+
     def start_game_with_mode(self, version):
         """Start the game with selected mode"""
         self.game_version = version
-        # Remove welcome screen
+        print(f"Game start with mode{self.game_version}")
+
+        # Remove game mode options buttons.
         self.version_game_button_1.place_forget()
         self.version_game_button_2.place_forget()
 
-        # --- create a start button for the game to start ---
-        self.start_button = self.create_button("Start", self.start_game)
-        self.start_button.place(relx=0.5, rely=0.5, anchor=CENTER)
+        self.initialise_game()
 
     
     def initialise_game(self):
         ''' instantiate/reset game objects, like Food, Snake, the score and time'''
-        self.screen_game.delete("all")
+
+        self.bind_keys() # bind keys to movement
+
         self.snake = Snake(self) # Create a an instance of Snakes object
         self.food = Food(self) # Create a an instance of Food object
         self.direction = "right"
@@ -164,6 +191,7 @@ class Game():
         # initialize the pause button on screen when the game starts.
         self.pause_button.grid(row=0, column=1)
         self.timer()
+        self.next_turn() # first call to get the snake moving.
 
 
     def start_game(self):
@@ -172,19 +200,16 @@ class Game():
         and call the next turn.
         '''
         self.start_button.place_forget()  # remove the 'start' button.
-        self.initialise_game()
+        self.choose_game_mode()
+
         print("Game starts!\n")
 
-        self.next_turn() # first call to get the snake moving.
 
+    def restart_game(self):
+        self.restart_button.place_forget()
+        print("\nRestarting the game!\n")
 
-    def timer(self):
-        '''Update the timer display, stops when game is over.'''
-        if not self.is_game_over and not self.is_game_paused:
-            self.game_time = time.time() - self.start_time
-            self.formatted_time = time.strftime("%M:%S", time.gmtime(self.game_time))
-            self.time_label.config(text=f"Time: {self.formatted_time}")
-            self.window.after(100, self.timer)
+        self.choose_game_mode()
 
     
     def next_turn(self):
@@ -295,6 +320,9 @@ class Game():
         print("\n", "-"*10, "Game over!", "-"*10)
         print(f"** score: {self.score} -- in {self.formatted_time}s **")
         self.pause_button.grid_remove()
+
+        # remove the key bindings to prevent error on console
+        self.unbind_keys()
         
         self.screen_game.create_text(self.screen_game.winfo_width()/2, self.screen_game.winfo_height()/2.5,
                             font=("consolas", 70),
@@ -361,11 +389,6 @@ class Game():
             print(f"{i}. {item['user']}: Score:{item['score']} -- time:{item['time']}s")
         print("-"*50)
 
-    def restart_game(self):
-        self.restart_button.place_forget()
-        print("\nRestarting the game!\n")
-        self.initialise_game()
-        self.next_turn()
 
 
 class Snake:
@@ -450,4 +473,3 @@ class Food:
 if __name__ == '__main__':
     game = Game()
     game.window.mainloop()
-    
