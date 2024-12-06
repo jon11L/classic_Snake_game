@@ -1,4 +1,7 @@
-import random, time
+import os
+import json
+import random, time, datetime
+
 
 import tkinter as tk
 from tkinter import ttk, Canvas
@@ -21,7 +24,7 @@ class Game():
         self.BASE_SPEED = 500 # default speed when game starts
         self.MAX_SPEED = 50   # Minimum speed (maximum difficulty)
 
-        self.game_version = None # track the game version
+        self.game_version = None # initialize and track the game version
 
         # --- set up the all screen ---
         self.window = tk.Tk()
@@ -82,6 +85,7 @@ class Game():
         self.bind_keys()
 
 
+
     def create_button(self, text, command):
         return tk.Button(self.window, text=text, command=command,
                         font=('consolas', 15, 'bold'),
@@ -110,17 +114,20 @@ class Game():
 
 
     def tooggle_pause(self):
-        if not self.is_game_paused and self.is_game_over == False:
-            print("pause.")
-            self.is_game_paused = True
-            self.pause_button.config(text="Resume")
-            self.pause_time = time.time()
-        else:
-            print("resume.")
-            self.is_game_paused = False
-            self.pause_button.config(text="Pause")
-            self.start_time += time.time() - self.pause_time
-            self.next_turn()  
+        # try:
+            if not self.is_game_paused and self.is_game_over == False:
+                print("Game paused.")
+                self.is_game_paused = True
+                self.pause_button.config(text="Resume")
+                self.pause_time = time.time()
+            else:
+                print("Game resumed.")
+                self.is_game_paused = False
+                self.pause_button.config(text="Pause")
+                self.start_time += time.time() - self.pause_time
+                self.next_turn()
+        # except Exception as e:
+            # print(f"Game cannot be paused now.")
     
 
     def bind_keys(self):
@@ -146,24 +153,29 @@ class Game():
     def initialise_game(self):
         ''' instantiate/reset game objects, like Food, Snake, the score and time'''
         self.screen_game.delete("all")
-        self.snake = Snake(self)
-        self.food = Food(self)
+        self.snake = Snake(self) # Create a an instance of Snakes object
+        self.food = Food(self) # Create a an instance of Food object
         self.direction = "right"
         self.is_game_over = False
         self.score = 0
         self.score_label.config(text=f"Score: {self.score}")
 
         self.start_time = time.time()
+        # initialize the pause button on screen when the game starts.
+        self.pause_button.grid(row=0, column=1)
         self.timer()
 
 
     def start_game(self):
+        '''Remove the start button,
+        call initialize_game() to initialize all objects for the game
+        and call the next turn.
+        '''
         self.start_button.place_forget()  # remove the 'start' button.
         self.initialise_game()
         print("Game starts!\n")
-        # initialize the pause button on screen after the game starts.
-        self.pause_button.grid(row=0, column=1)
-        self.next_turn()
+
+        self.next_turn() # first call to get the snake moving.
 
 
     def timer(self):
@@ -280,9 +292,10 @@ class Game():
 
     def game_over(self):
         self.is_game_over = True
-        print("Game over!")
-        print(f"** best score: {self.score} -- in {self.formatted_time}s **")
-
+        print("\n", "-"*10, "Game over!", "-"*10)
+        print(f"** score: {self.score} -- in {self.formatted_time}s **")
+        self.pause_button.grid_remove()
+        
         self.screen_game.create_text(self.screen_game.winfo_width()/2, self.screen_game.winfo_height()/2.5,
                             font=("consolas", 70),
                             text="Game Over",
@@ -290,9 +303,63 @@ class Game():
                             tag="gameover",
                             )
 
+        self.update_best_scores()
+        self.show_top_score()
+
         # ---set the the restart button after a little delay---------------
         self.window.after(500, lambda: self.restart_button.place(relx=0.5, rely=0.75, anchor=CENTER))
 
+
+    def load_best_scores(self, file_path="best_scores.json"):
+        '''check if the best_scores file exists and load the top scores.
+            If not it create the file
+            '''
+
+        print("\nSearching for Top-scores file.")
+        if os.path.exists(file_path): # it will be in the current diretory
+            with open(file_path, "r") as file:
+                print("File found and loading.")
+                # self.top_scores = json.load(file) # load the top scores from file
+                return json.loads(file.read())
+        else:
+            # create file in the current directory
+            with open(file_path, "w") as file:
+                json.dump([], file)
+            print("File missing or not found. --> file created with an empty list")
+            return []
+    
+
+    def update_best_scores(self, file_path="best_scores.json"):
+        '''check if the score is in the top 10.
+        if so adds it to the list and remove the last one
+        '''
+        self.scores = self.load_best_scores(file_path)
+        user = input("\nTo remember your score, enter your name : ").capitalize()
+        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")  # Nicely formatted date
+
+        # add the new score to the list
+        self.scores.append({"user":user, "score":self.score, "time":self.formatted_time, "date":now}) # datetime.datetime()
+
+        # sort the score list and keep the top 10
+        self.scores = sorted(self.scores, key=lambda x: x["score"], reverse=True)[:10]
+
+        # save the updated score list in the file
+        print("Try updating the list.")
+        with open(file_path, "w") as file:
+            print("updating...")
+            json.dump(self.scores, file, indent=4, separators=(',', ':'))
+            print("updated...")
+
+
+    def show_top_score(self): 
+        '''Display the top3 scores.'''
+
+        top_scores = self.scores[:3]
+        print("\n --- Top 3 scores --- ")
+
+        for i, item in enumerate(top_scores, start=1):
+            print(f"{i}. {item['user']}: Score:{item['score']} -- time:{item['time']}s")
+        print("-"*50)
 
     def restart_game(self):
         self.restart_button.place_forget()
@@ -383,3 +450,4 @@ class Food:
 if __name__ == '__main__':
     game = Game()
     game.window.mainloop()
+    
