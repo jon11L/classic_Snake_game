@@ -19,11 +19,11 @@ self.BASE_SPEED and self.MAX_SPEED can be edited at the top of the Game class
 
 
 
-'Start of program/choose the game's setting.'
+'Start of program'
 
 <img src="./screenshots/1.png" alt="some sample photos" width=350>
 
-'Start button/Ready to start'
+'choose the game's setting.'
 
 <img src="./screenshots/2.png" alt="some sample photos" width=350>
 
@@ -31,8 +31,12 @@ self.BASE_SPEED and self.MAX_SPEED can be edited at the top of the Game class
 
 <img src="./screenshots/3.png" alt="some sample photos" width=350>
 
-'Game over'
+'user enter their names.'
 
 <img src="./screenshots/4.png" alt="some sample photos" width=350>
+
+'Game over'
+
+<img src="./screenshots/5.png" alt="some sample photos" width=350>
 
 
