@@ -324,7 +324,7 @@ class Game():
         # remove the key bindings to prevent error on console
         self.unbind_keys()
         
-        self.screen_game.create_text(self.screen_game.winfo_width()/2, self.screen_game.winfo_height()/2.5,
+        self.screen_game.create_text(self.screen_game.winfo_width()/2, self.screen_game.winfo_height()/4,
                             font=("consolas", 70),
                             text="Game Over",
                             fill="red",
@@ -332,7 +332,6 @@ class Game():
                             )
 
         self.update_best_scores()
-        self.show_top_score()
 
         # ---set the the restart button after a little delay---------------
         self.window.after(500, lambda: self.restart_button.place(relx=0.5, rely=0.75, anchor=CENTER))
@@ -362,6 +361,8 @@ class Game():
         if so adds it to the list and remove the last one
         '''
         self.scores = self.load_best_scores(file_path)
+
+
         user = input("\nTo remember your score, enter your name : ").capitalize()
         now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")  # Nicely formatted date
 
@@ -377,6 +378,8 @@ class Game():
             print("updating...")
             json.dump(self.scores, file, indent=4, separators=(',', ':'))
             print("updated...")
+        
+        self.show_top_score()
 
 
     def show_top_score(self): 
@@ -385,10 +388,27 @@ class Game():
         top_scores = self.scores[:3]
         print("\n --- Top 3 scores --- ")
 
-        for i, item in enumerate(top_scores, start=1):
-            print(f"{i}. {item['user']}: Score:{item['score']} -- time:{item['time']}s")
-        print("-"*50)
 
+        # creating a display message 'Top 3 scores' on the canva.
+        self.screen_game.create_text(
+            self.screen_game.winfo_width()/2, self.screen_game.winfo_height()/2.5,
+            font=("consolas", 25),
+            text="\n --- Top 3 scores --- ",
+            fill="darkgreen",
+            tag="topscores"
+        )
+        # show the list of the top 3 scores on the screen
+        for i, item in enumerate(top_scores, start=1):
+            best_scores = f"{i}. {item['user'][:5]}: Score: {item['score']}  --  time: {item['time']}s"
+            print(best_scores)
+            self.screen_game.create_text(
+            self.screen_game.winfo_width()/2, self.screen_game.winfo_height()/2.1 + (i*30),
+            font=("consolas", 15),
+            text=best_scores,
+            fill="white",
+            tag="topscores"
+        )
+        print("-"*50)
 
 
 class Snake:
