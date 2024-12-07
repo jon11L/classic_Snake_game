@@ -131,7 +131,7 @@ class Game():
 
 
     def tooggle_pause(self):
-
+        ''' Allow to pause the game, in stopping to call next_turn() function.'''
         if not self.is_game_paused and self.is_game_over == False:
             print("Game paused.")
             self.is_game_paused = True
@@ -319,22 +319,22 @@ class Game():
         self.is_game_over = True
         print("\n", "-"*10, "Game over!", "-"*10)
         print(f"** score: {self.score} -- in {self.formatted_time}s **")
-        self.pause_button.grid_remove()
 
-        # remove the key bindings to prevent error on console
-        self.unbind_keys()
-        
+
+        self.screen_game.delete("all") # remove the items(snake and food) on canvas
+        self.pause_button.grid_remove() # remove the pause button.
+
+        self.unbind_keys() # remove the key bindings to prevent error on console
+
+        # display a 'Game over' message on the screen.        
         self.screen_game.create_text(self.screen_game.winfo_width()/2, self.screen_game.winfo_height()/4,
                             font=("consolas", 70),
                             text="Game Over",
                             fill="red",
                             tag="gameover",
                             )
-
+        # --- call the function to check the score against and update is necessary
         self.update_best_scores()
-
-        # ---set the the restart button after a little delay---------------
-        self.window.after(500, lambda: self.restart_button.place(relx=0.5, rely=0.75, anchor=CENTER))
 
 
     def load_best_scores(self, file_path="best_scores.json"):
@@ -360,32 +360,89 @@ class Game():
         '''check if the score is in the top 10.
         if so adds it to the list and remove the last one
         '''
-        self.scores = self.load_best_scores(file_path)
+        self.best_scores = self.load_best_scores(file_path)
 
+        is_top_scores = False
+        # compare if self.score is higher than any self.scores['score']
+        if len(self.best_scores) < 3:
+            # list scores shorter than 3 so automatically entered in the Top3
+            is_top_scores = True
+        else:
+            # check if new score os is higher than the lowest top score.
+            is_top_scores = self.score > self.best_scores[-1]['score']
 
-        user = input("\nTo remember your score, enter your name : ").capitalize()
-        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")  # Nicely formatted date
+        # trying to implement pop up input for the user to enter their names.
+        if is_top_scores:
+            # Create a pop-up input dialog
+            username_window = tk.Toplevel(self.window)
+            username_window.title("Top Score!")
+            username_window.geometry("300x150")
+            username_window.resizable(False, False)
 
-        # add the new score to the list
-        self.scores.append({"user":user, "score":self.score, "time":self.formatted_time, "date":now}) # datetime.datetime()
+            # # Center the pop-up
+            username_window.update_idletasks()
+            width = username_window.winfo_width()
+            height = username_window.winfo_height()
+            x = (username_window.winfo_screenwidth() // 2) - (width // 2)
+            y = (username_window.winfo_screenheight() // 2) - (height // 2)
+            username_window.geometry(f'{width}x{height}+{x}+{y}')
 
-        # sort the score list and keep the top 10
-        self.scores = sorted(self.scores, key=lambda x: x["score"], reverse=True)[:10]
+            # # Add labels and entry
+            label = tk.Label(username_window, 
+                             text="Congratulations!\nYou've made it to the Top 3!\nEnter your name:", 
+                             font=('consolas', 10))
+            label.pack(pady=5)
+    
+            name_entry = tk.Entry(username_window, font=('consolas', 12))
+            name_entry.pack(pady=10)
 
-        # save the updated score list in the file
-        print("Try updating the list.")
-        with open(file_path, "w") as file:
-            print("updating...")
-            json.dump(self.scores, file, indent=4, separators=(',', ':'))
-            print("updated...")
-        
-        self.show_top_score()
+            def submit_name():
+                '''return the username from the input button on canva'''
+                user = name_entry.get().strip().capitalize()
+
+                if not user:
+                    user = "Anonymous"
+
+                now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")  # Nicely formatted date
+
+                # add the new score to the list
+                self.best_scores.append({"user":user,
+                                         "score":self.score,
+                                         "time":self.formatted_time,
+                                         "date":now})
+
+                # sort the score list and keep the top 10
+                self.best_scores = sorted(self.best_scores, key=lambda x: x["score"], reverse=True)[:10]
+
+                username_window.destroy()
+
+                 # save the updated score list in the file
+                print("Try updating the list.")
+                with open(file_path, "w") as file:
+                    print("updating...")
+                    json.dump(self.best_scores, file, indent=4, separators=(',', ':'))
+                    print("updated.")
+
+                self.show_top_score()
+
+            #  call to submit name to be updated in the list
+            submit_button = tk.Button(username_window, 
+                                      text="Submit", 
+                                      command=submit_name, 
+                                      font=('consolas', 12))
+            submit_button.pack(pady=10)
+
+        else:
+            self.show_top_score()
 
 
     def show_top_score(self): 
         '''Display the top3 scores.'''
 
-        top_scores = self.scores[:3]
+        # ---set the the restart button after a little delay---------------
+        self.window.after(500, lambda: self.restart_button.place(relx=0.5, rely=0.75, anchor=CENTER))
+
+        top_scores = self.best_scores[:3]
         print("\n --- Top 3 scores --- ")
 
 
@@ -399,7 +456,7 @@ class Game():
         )
         # show the list of the top 3 scores on the screen
         for i, item in enumerate(top_scores, start=1):
-            best_scores = f"{i}. {item['user'][:5]}: Score: {item['score']}  --  time: {item['time']}s"
+            best_scores = f"{i}. {item['user'][:4]}: Score: {item['score']}  --  time: {item['time']}s"
             print(best_scores)
             self.screen_game.create_text(
             self.screen_game.winfo_width()/2, self.screen_game.winfo_height()/2.1 + (i*30),
