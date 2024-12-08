@@ -24,17 +24,17 @@ class Game():
 
         self.game_version = None # initialize and track the game version
 
-        # --- set up the all screen ---
+        # --- set up the whole screen ---
         self.window = tk.Tk()
         self.window.title('Snake')
         self.window.resizable(False, False)
         
-        # Use grid for better control of placement
+        # Use grid for better control of placement  of the widgets 
         self.top_frame = ttk.Frame(self.window)
         self.top_frame.pack(fill='x') 
-        self.top_frame.grid_columnconfigure(0, weight=1)
-        self.top_frame.grid_columnconfigure(1, weight=0)
-        self.top_frame.grid_columnconfigure(2, weight=1)
+        self.top_frame.grid_columnconfigure(0, weight=1) # placement for score
+        self.top_frame.grid_columnconfigure(1, weight=0) # placement for Pause button
+        self.top_frame.grid_columnconfigure(2, weight=1) # placement for timer
 
         # --- Initialize score label ---
         self.score_label = tk.Label(self.top_frame, text=f"Score: 0", font=('consolas', 15))
@@ -55,6 +55,10 @@ class Game():
         # --- screen game set up ---
         self.screen_game = Canvas(self.window, bg=self.BACKGROUND_COLOR, width=self.GAME_WIDTH, height=self.GAME_HEIGHT)
         self.screen_game.pack()
+
+        # --- create a start button for the game to start ---
+        self.start_button = self.create_button("Start", self.start_game)
+        self.start_button.place(relx=0.5, rely=0.75, anchor=CENTER, width= 120)
 
         # --- creating a restart button when game over // activated later in the app ---
         self.restart_button = self.create_button("Restart", self.restart_game)
@@ -80,11 +84,6 @@ class Game():
         exit_button.pack(side=tk.BOTTOM, pady=1, ipadx=1, ipady=5, expand=True, anchor="s")
 
         self.center_window()
-        self.bind_keys()
-
-        # --- create a start button for the game to start ---
-        self.start_button = self.create_button("Start", self.start_game)
-        self.start_button.place(relx=0.5, rely=0.5, anchor=CENTER)
 
 
     def create_button(self, text, command):
@@ -134,12 +133,14 @@ class Game():
         ''' Allow to pause the game, in stopping to call next_turn() function.'''
         if not self.is_game_paused and self.is_game_over == False:
             print("Game paused.")
+            self.unbind_keys()
             self.is_game_paused = True
             self.pause_button.config(text="Resume")
             self.pause_time = time.time()
         else:
             print("Game resumed.")
             self.is_game_paused = False
+            self.bind_keys()
             self.pause_button.config(text="Pause")
             self.start_time += time.time() - self.pause_time
             self.next_turn()
@@ -292,7 +293,9 @@ class Game():
 
 
     def check_collision(self):
-
+        '''check the head of snake (or first element) coordinates,
+        and compares it with other coordinates for collisions
+        such like it's own body and the wall if in game version with wall collision'''
         x, y = self.snake.coordinates[0]
 
         if self.game_version == 2:
@@ -316,25 +319,24 @@ class Game():
 
 
     def game_over(self):
+        '''display the game over message and call for score update.'''
         self.is_game_over = True
         print("\n", "-"*10, "Game over!", "-"*10)
         print(f"** score: {self.score} -- in {self.formatted_time}s **")
 
-
-        self.screen_game.delete("all") # remove the items(snake and food) on canvas
         self.pause_button.grid_remove() # remove the pause button.
-
         self.unbind_keys() # remove the key bindings to prevent error on console
 
         # display a 'Game over' message on the screen.        
-        self.screen_game.create_text(self.screen_game.winfo_width()/2, self.screen_game.winfo_height()/4,
-                            font=("consolas", 70),
+        self.screen_game.create_text(self.screen_game.winfo_width()/2, self.screen_game.winfo_height()/3,
+                            font=("consolas", 75),
                             text="Game Over",
                             fill="red",
                             tag="gameover",
                             )
         # --- call the function to check the score against and update is necessary
-        self.update_best_scores()
+        self.window.after(2500, self.update_best_scores)
+
 
 
     def load_best_scores(self, file_path="best_scores.json"):
@@ -360,6 +362,17 @@ class Game():
         '''check if the score is in the top 10.
         if so adds it to the list and remove the last one
         '''
+        # remove object from the screen
+        self.screen_game.delete("all")
+
+        # trying to display a smaller Game over message when the user enter their name or see the top scores
+        self.screen_game.create_text(self.screen_game.winfo_width()/2, self.screen_game.winfo_height()/5,
+                    font=("consolas", 25),
+                    text="Game Over",
+                    fill="darkred",
+                    tag="gameover",)
+        
+
         self.best_scores = self.load_best_scores(file_path)
 
         is_top_scores = False
@@ -368,33 +381,39 @@ class Game():
             # list scores shorter than 3 so automatically entered in the Top3
             is_top_scores = True
         else:
-            # check if new score os is higher than the lowest top score.
+            # check if new score is higher than the lowest top score adds to the list if it is.
             is_top_scores = self.score > self.best_scores[-1]['score']
 
-        # trying to implement pop up input for the user to enter their names.
         if is_top_scores:
             # Create a pop-up input dialog
-            username_window = tk.Toplevel(self.window)
-            username_window.title("Top Score!")
-            username_window.geometry("300x150")
-            username_window.resizable(False, False)
+            username_popup = tk.Toplevel(self.window, background="green")
+            username_popup.title("Top Score!")
+            username_popup.geometry("300x150")
+            username_popup.resizable(False, False)
+            username_popup.overrideredirect(True) # hides the topbar and submit buttons
 
             # # Center the pop-up
-            username_window.update_idletasks()
-            width = username_window.winfo_width()
-            height = username_window.winfo_height()
-            x = (username_window.winfo_screenwidth() // 2) - (width // 2)
-            y = (username_window.winfo_screenheight() // 2) - (height // 2)
-            username_window.geometry(f'{width}x{height}+{x}+{y}')
+            username_popup.update_idletasks()
+            width = username_popup.winfo_width()
+            height = username_popup.winfo_height()
+            x = (username_popup.winfo_screenwidth() // 2) - (width // 2)
+            y = (username_popup.winfo_screenheight() // 2) - (height // 2)
+            username_popup.geometry(f'{width}x{height}+{x}+{y}')
 
             # # Add labels and entry
-            label = tk.Label(username_window, 
-                             text="Congratulations!\nYou've made it to the Top 3!\nEnter your name:", 
-                             font=('consolas', 10))
-            label.pack(pady=5)
+            label = tk.Label(username_popup, 
+                             text="Congratulations!\nYou've made it to the Top 3!\n\nEnter your name and press <Enter>", 
+                             font=('consolas', 13),
+                             background = "green"
+                             )
+            label.pack(pady=10)
     
-            name_entry = tk.Entry(username_window, font=('consolas', 12))
+            name_entry = tk.Entry(username_popup, font=('consolas', 12))
             name_entry.pack(pady=10)
+            name_entry.focus() # user can type their names in the text field.
+
+            # allow user to pres the key <Return> to call submit_name() 
+            name_entry.bind('<Return>', lambda event: submit_name())
 
             def submit_name():
                 '''return the username from the input button on canva'''
@@ -403,7 +422,7 @@ class Game():
                 if not user:
                     user = "Anonymous"
 
-                now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")  # Nicely formatted date
+                now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")  # formatted date to display as: YYYY-MM-DD hh:mm
 
                 # add the new score to the list
                 self.best_scores.append({"user":user,
@@ -414,9 +433,10 @@ class Game():
                 # sort the score list and keep the top 10
                 self.best_scores = sorted(self.best_scores, key=lambda x: x["score"], reverse=True)[:10]
 
-                username_window.destroy()
-
-                 # save the updated score list in the file
+                name_entry.unbind('<Return>') # cancel the return button value after the pop is already closed
+                username_popup.destroy() # close the pop up message after the user has entered their username
+                
+                # save the updated score list in the file
                 print("Try updating the list.")
                 with open(file_path, "w") as file:
                     print("updating...")
@@ -425,12 +445,8 @@ class Game():
 
                 self.show_top_score()
 
-            #  call to submit name to be updated in the list
-            submit_button = tk.Button(username_window, 
-                                      text="Submit", 
-                                      command=submit_name, 
-                                      font=('consolas', 12))
-            submit_button.pack(pady=10)
+            # # allow user to type <Return> 
+            # name_entry.bind('<Return>', lambda event: on_submit_name())
 
         else:
             self.show_top_score()
@@ -440,26 +456,26 @@ class Game():
         '''Display the top3 scores.'''
 
         # ---set the the restart button after a little delay---------------
-        self.window.after(500, lambda: self.restart_button.place(relx=0.5, rely=0.75, anchor=CENTER))
+        self.window.after(1500, lambda: self.restart_button.place(relx=0.5, rely=0.75, anchor=CENTER))
 
         top_scores = self.best_scores[:3]
         print("\n --- Top 3 scores --- ")
 
-
         # creating a display message 'Top 3 scores' on the canva.
         self.screen_game.create_text(
-            self.screen_game.winfo_width()/2, self.screen_game.winfo_height()/2.5,
+            self.screen_game.winfo_width()/2, self.screen_game.winfo_height()/3,
             font=("consolas", 25),
             text="\n --- Top 3 scores --- ",
             fill="darkgreen",
             tag="topscores"
         )
+
         # show the list of the top 3 scores on the screen
         for i, item in enumerate(top_scores, start=1):
             best_scores = f"{i}. {item['user'][:4]}: Score: {item['score']}  --  time: {item['time']}s"
             print(best_scores)
             self.screen_game.create_text(
-            self.screen_game.winfo_width()/2, self.screen_game.winfo_height()/2.1 + (i*30),
+            self.screen_game.winfo_width()/2, self.screen_game.winfo_height()/2.5 + (i*30),
             font=("consolas", 15),
             text=best_scores,
             fill="white",
@@ -469,7 +485,7 @@ class Game():
 
 
 class Snake:
-    def __init__(self, game):
+    def __init__(self, game: Game):
         self.game = game
         self.body_size = game.BODY_SIZE
         self.coordinates = []
@@ -531,7 +547,7 @@ class Snake:
 
 
 class Food:
-    def __init__(self, game):
+    def __init__(self, game: Game):
         self.game = game
 
         # food generate at a random place in an empty space
