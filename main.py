@@ -28,7 +28,12 @@ class GameConfig():
         pygame.mixer.init()
         # preload sound for game events. like collisions
         self.collision_wall_sound = pygame.mixer.Sound("assets/sounds/collision_wall.wav")
+        self.collision_wall_sound.set_volume(0.5)
         self.collision_self_sound = pygame.mixer.Sound("assets/sounds/collision_self.wav")
+        self.collision_self_sound.set_volume(0.3)
+        self.collision_food_sound = pygame.mixer.Sound("assets/sounds/food_sound.wav")
+        self.collision_food_sound.set_volume(0.4)
+
 
         self.create_window()
         self.set_window_and_widgets()
@@ -39,9 +44,6 @@ class GameConfig():
         self.gif_frames = []
         self.gif_frame_index = 0
         self.gif_item = None
-
-
-
 
 
     def create_window(self):
@@ -110,6 +112,7 @@ class GameConfig():
                         overrelief=GROOVE,
                         activebackground="lightgray",
                         )
+
 
     def set_window_and_widgets(self):
 
@@ -432,6 +435,7 @@ class Game():
                 self.setup.score_label.config(text=f"Score: {self.score}")
                 # generate food at a different location
                 self.setup.screen_game.delete("food")
+                self.setup.collision_food_sound.play()
                 self.food = Food(self)     
             else:
                 del self.snake.coordinates[-1]
