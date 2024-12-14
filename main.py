@@ -5,22 +5,44 @@ import random, time, datetime
 import tkinter as tk
 from tkinter import ttk, Canvas
 from tkinter.constants import *
+from itertools import cycle
+
+# including image and sound for testing
+from PIL import Image, ImageTk
+import pygame
 
 
 class GameConfig():
-    ''' Classs handles most of the logic that builds the screen, windows, canvas and buttons. when the Game class is called.'''
-    
-    # screen dimension
-    GAME_WIDTH = 500
-    GAME_HEIGHT = 500
-    BACKGROUND_COLOR = "black"
+    ''' Classs handles most of the logic that builds the screen,
+    windows, canvas, sounds and buttons. when the Game class is called.
+    '''
+    def __init__(self, game):    
+        # screen dimension
+        self.GAME_WIDTH = 500
+        self.GAME_HEIGHT = 500
+        self.BACKGROUND_COLOR = "black"
 
-    # def __init__(self):
-    #     '''Initialize the main game screen configuration'''
-    #     self.window = None
-    #     self.top_frame = None
-    #     self.score_label = None
-    #     self.time_label = None
+        self.game = game
+
+        # Initialize the sound mixer with pygame
+        pygame.mixer.init()
+        # preload sound for game events. like collisions
+        self.collision_wall_sound = pygame.mixer.Sound("assets/sounds/collision_wall.wav")
+        self.collision_self_sound = pygame.mixer.Sound("assets/sounds/collision_self.wav")
+
+        self.create_window()
+        self.set_window_and_widgets()
+
+        
+        # pre initialize gif frames
+        self.gif_imgage = None
+        self.gif_frames = []
+        self.gif_frame_index = 0
+        self.gif_item = None
+
+
+
+
 
     def create_window(self):
         # --- set up the whole screen ---
@@ -37,11 +59,11 @@ class GameConfig():
 
                 # --- Initialize score label ---
         self.score_label = tk.Label(self.top_frame, text=f"Score: 0", font=('consolas', 15))
-        self.score_label.grid(row=0, column=0, sticky='e', padx=50)
+        self.score_label.grid(row=0, column=0, sticky='e', padx=50, pady=2)
 
                 # --- Initialize time label ---
         self.time_label = tk.Label(self.top_frame, text=f"Time: 00:00", font=('consolas', 15))
-        self.time_label.grid(row=0, column=2, sticky='w', padx=50)
+        self.time_label.grid(row=0, column=2, sticky='w', padx=50, pady=2)
 
                 # --- creating a exit button to quit the game ---  
         exit_button = ttk.Button(self.window,
@@ -57,6 +79,8 @@ class GameConfig():
                                   height=self.GAME_HEIGHT
                                   )
         self.screen_game.pack()
+
+        self.center_window()
 
 
     def center_window(self):
@@ -87,6 +111,134 @@ class GameConfig():
                         activebackground="lightgray",
                         )
 
+    def set_window_and_widgets(self):
+
+        # ---------dynamic widgets/buttons.------------------
+
+        self.pause_button = tk.Button(self.top_frame, text=f"Pause", font=('consolas', 14),
+                            command=self.game.tooggle_pause,
+                            bg="lightblue",
+                            fg="blue",
+                            relief="groove")
+        
+
+        # --- create a start button for the game to start ---
+        self.start_button = self.create_button("Start", self.game.start_game)
+        self.start_button.place(relx=0.5, rely=0.75, anchor=CENTER, width= 120)
+
+        # --- creating a restart button when game over // activated later in the app ---
+        self.restart_button = self.create_button("Restart", self.game.restart_game)
+
+        # --- buttons to give in between the two different game's options // activated later in the app ---
+        self.version_game_button_1 = self.create_button(
+                                                    text="Version 1: Wall limitation / OFF.",
+                                                    command=lambda: self.game.start_game_with_mode(1)
+                                                    )
+
+        self.version_game_button_2 = self.create_button(
+                                                    text="version 2: Wall limitation / ON. ",
+                                                    command=lambda: self.game.start_game_with_mode(2)
+                                                    )
+    def show_username_popup(self):
+        """Create a pop-up input dialog attached to the parent window."""
+        # Create the popup window
+        
+        popup_width = 300
+        popup_height = 150
+
+        # Calculate center position
+        center_x = (self.GAME_WIDTH - popup_width) // 2
+        center_y = (self.GAME_HEIGHT - popup_height) // 2
+
+        # Create a background for the input message
+        self.popup_background = self.screen_game.create_rectangle(
+            center_x, center_y,
+            center_x + popup_width, center_y + popup_height,
+            fill="green"
+        )
+
+        # # Add labels and entry pop up message for user to input their username
+        self.popup_message = self.screen_game.create_text(center_x + popup_width // 2,
+                        center_y + 40,
+                        text="Congratulations!\nYou've made it to the Top 3!\n\nEnter your name and press <Enter>", 
+                        font=('consolas', 13),
+                        justify="center"
+                        )
+
+        self.name_entry = tk.Entry(self.window, font=('consolas', 12))
+
+        self.name_entry_window = self.screen_game.create_window(
+                center_x + popup_width // 2,
+                center_y + 110,
+                window=self.name_entry
+            )
+        self.name_entry.focus() # put focus on the name entry / input for the user
+
+
+    def display_gif(self, gif_path):
+
+        self.load_gif(gif_path)
+        self.gif_item = self.screen_game.create_image(
+            self.GAME_WIDTH // 2, self.GAME_HEIGHT // 3,
+            anchor="center"
+        )
+        self.refresh_gif_frames()
+
+
+    def load_gif(self, gif_path):
+
+        self.gif_image = Image.open(gif_path)  # Open the GIF file
+        self.gif_frames = []  # To store the individual frames
+        # Extract and store frames
+        try:
+            while True:
+                frame = self.gif_image.copy()
+                self.gif_frames.append(ImageTk.PhotoImage(frame))
+                self.gif_image.seek(self.gif_image.tell() + 1)  # Move to the next frame
+        except EOFError:
+            pass  # pass by the end of gif's frame to restartEnd of GIF frames
+
+        self.gif_frame_index = 0  # Start with the first frame
+
+
+
+    def refresh_gif_frames(self):
+        """Animate the GIF on the canvas."""
+        if self.gif_frames:  # Ensure frames are loaded
+            frame = self.gif_frames[self.gif_frame_index]
+            self.screen_game.itemconfig(self.gif_item, image=frame)
+
+            # Update the frame index
+            self.gif_frame_index = (self.gif_frame_index + 1) % len(self.gif_frames)
+
+            # Schedule the next frame update
+            self.window.after(100, self.refresh_gif_frames)  # Adjust timing as needed
+
+
+    def show_gif(self, gif_path):
+        """Show the GIF on the canvas."""
+        self.load_gif(gif_path, size=(200, 200))  # Load frames and resize
+        self.gif_item = self.screen_game.create_image(
+            self.GAME_WIDTH // 2, self.GAME_HEIGHT // 3, anchor="center"
+        )
+        self.refresh_gif_frames()  # Start animation
+
+
+    def remove_gif(self):
+        """Remove the GIF from the canvas."""
+        if self.gif_item:
+            self.screen_game.delete(self.gif_item)
+            self.gif_item = None
+
+
+    def collision_sound(self, type):
+        ''' add sounds effect to collision events.'''
+        if type == "wall":
+            self.collision_wall_sound.play()
+        elif type == "self":
+            self.collision_self_sound.play()
+
+
 
 
 class Game():
@@ -103,40 +255,14 @@ class Game():
         self.MAX_SPEED = 50   # Minimum speed (maximum difficulty)
 
         self.game_version = None # initialize and track the game version
-
-        # get the scren configuration from the GameConfig class
-        self.setup = GameConfig()
-        self.setup.create_window()
-
-        # ---------dynamic widgets/buttons.------------------
-        # --- pause button ---
         self.is_game_paused = False
 
-        self.pause_button = tk.Button(self.setup.top_frame, text=f"Pause", font=('consolas', 14),
-                            command=self.tooggle_pause,
-                            bg="lightblue",
-                            fg="blue",
-                            relief="groove")
+        # get the scren configuration from the GameConfig class
+        self.setup = GameConfig(self)
 
-        # --- create a start button for the game to start ---
-        self.start_button = self.setup.create_button("Start", self.start_game)
-        self.start_button.place(relx=0.5, rely=0.75, anchor=CENTER, width= 120)
+        self.setup.display_gif('assets/image/snake1.gif')
 
-        # --- creating a restart button when game over // activated later in the app ---
-        self.restart_button = self.setup.create_button("Restart", self.restart_game)
 
-        # --- buttons to give in between the two different game's options // activated later in the app ---
-        self.version_game_button_1 = self.setup.create_button(
-                                                    text="Version 1: Wall limitation / OFF.",
-                                                    command=lambda: self.start_game_with_mode(1)
-                                                    )
-
-        self.version_game_button_2 = self.setup.create_button(
-                                                    text="version 2: Wall limitation / ON. ",
-                                                    command=lambda: self.start_game_with_mode(2)
-                                                    )
-
-        self.setup.center_window()
 
 
     def bind_keys(self):
@@ -161,13 +287,13 @@ class Game():
             print("Game paused.")
             self.unbind_keys()
             self.is_game_paused = True
-            self.pause_button.config(text="Resume")
+            self.setup.pause_button.config(text="Resume")
             self.pause_time = time.time()
         else:
             print("Game resumed.")
             self.is_game_paused = False
             self.bind_keys()
-            self.pause_button.config(text="Pause")
+            self.setup.pause_button.config(text="Pause")
             self.start_time += time.time() - self.pause_time
             self.next_turn()
 
@@ -186,8 +312,8 @@ class Game():
         self.setup.screen_game.delete("all")
 
         # Display the two game mode options.
-        self.version_game_button_1.place(relx=0.5, rely=0.45, anchor=CENTER)
-        self.version_game_button_2.place(relx=0.5, rely=0.55, anchor=CENTER)
+        self.setup.version_game_button_1.place(relx=0.5, rely=0.45, anchor=CENTER)
+        self.setup.version_game_button_2.place(relx=0.5, rely=0.55, anchor=CENTER)
 
 
     def start_game_with_mode(self, version):
@@ -196,8 +322,8 @@ class Game():
         print(f"Game start with mode{self.game_version}")
 
         # Remove game mode options buttons.
-        self.version_game_button_1.place_forget()
-        self.version_game_button_2.place_forget()
+        self.setup.version_game_button_1.place_forget()
+        self.setup.version_game_button_2.place_forget()
 
         self.initialise_game()
 
@@ -216,7 +342,7 @@ class Game():
 
         self.start_time = time.time()
         # initialize the pause button on screen when the game starts.
-        self.pause_button.grid(row=0, column=1)
+        self.setup.pause_button.grid(row=0, column=1, ipadx=10)
         self.timer()
         self.next_turn() # first call to get the snake moving.
 
@@ -226,13 +352,14 @@ class Game():
         call initialize_game() to initialize all objects for the game
         and call the next turn.
         '''
-        self.start_button.place_forget()  # remove the 'start' button.
+        self.setup.remove_gif()
+        self.setup.start_button.place_forget()  # remove the 'start' button.
         self.choose_game_mode()
         print("Game starts!\n")
 
 
     def restart_game(self):
-        self.restart_button.place_forget()
+        self.setup.restart_button.place_forget()
         print("\nRestarting the game!\n")
 
         self.choose_game_mode()
@@ -261,7 +388,7 @@ class Game():
         elif self.direction == "right":
             x += self.SPACE_SIZE
 
-        # if snake goes above the wall, it returns the opposite side
+        # if snake goes above the wall, it returns to the opposite side in changing the first set of coordinates
         if self.game_version == 1:
             if x < 0:
                 x = self.setup.GAME_WIDTH - self.SPACE_SIZE 
@@ -278,6 +405,7 @@ class Game():
         # if collision it stops the game, otherwise goes to next turn.
         if self.check_collision():
             self.game_over()
+            return
         else:
             # create the new snake's head
             square = self.setup.screen_game.create_rectangle(
@@ -313,6 +441,7 @@ class Game():
             # adjust the speed as the score increases.
             self.current_speed = max(self.MAX_SPEED, self.BASE_SPEED - (self.score * 5))
 
+            # if unindented one block, game over event becomes chaotic. and repeat itself
             self.setup.window.after(self.current_speed, self.next_turn)
             self.timer()
 
@@ -326,12 +455,15 @@ class Game():
         if self.game_version == 2:
         # --- wall collision is activated ---
             if x < 0 or x >= self.setup.GAME_WIDTH:
+                self.setup.collision_sound("wall")
                 return True
             elif y < 0 or y >= self.setup.GAME_HEIGHT:
+                self.setup.collision_sound("wall")
                 return True
 
         for body_part in self.snake.coordinates[1:]:
             if self.snake.coordinates[0] == body_part:
+                self.setup.collision_sound("self")
                 return True
 
         return False
@@ -348,7 +480,7 @@ class Game():
         print("\n", "-"*10, "Game over!", "-"*10)
         print(f"** score: {self.score} -- in {self.formatted_time}s **")
 
-        self.pause_button.grid_remove() # remove the pause button.
+        self.setup.pause_button.grid_remove() # remove the pause button.
         self.unbind_keys() # remove the key bindings to prevent error on console
 
         # display a 'Game over' message on the screen.        
@@ -420,41 +552,15 @@ class Game():
             print("Score not in Top 3.")
             is_top_scores = False
 
-
         if is_top_scores:
-            # Create a pop-up input dialog
-            username_popup = tk.Toplevel(self.setup.window, background="green")
-            username_popup.title("Top Score!")
-            username_popup.geometry("300x150")
-            username_popup.resizable(False, False)
-            username_popup.overrideredirect(True) # hides the topbar and submit buttons
+            self.setup.show_username_popup()
 
-            # # Center the pop-up
-            username_popup.update_idletasks()
-            width = username_popup.winfo_width()
-            height = username_popup.winfo_height()
-            x = (username_popup.winfo_screenwidth() // 2) - (width // 2)
-            y = (username_popup.winfo_screenheight() // 2) - (height // 2)
-            username_popup.geometry(f'{width}x{height}+{x}+{y}')
-
-            # # Add labels and entry pop up message for user to input their username
-            label = tk.Label(username_popup, 
-                             text="Congratulations!\nYou've made it to the Top 3!\n\nEnter your name and press <Enter>", 
-                             font=('consolas', 13),
-                             background = "green"
-                             )
-            label.pack(pady=10)
-    
-            name_entry = tk.Entry(username_popup, font=('consolas', 12))
-            name_entry.pack(pady=10)
-            name_entry.focus() # user can type their names in a text field.
-
-            # allow user to pres the key <Return> to call submit_name() 
-            name_entry.bind('<Return>', lambda event: submit_name())
+            # allow user to pres the key <Return> to call submit the input name 
+            self.setup.name_entry.bind('<Return>', lambda event: submit_name())
 
             def submit_name():
                 '''return the username from the input button on canva'''
-                user = name_entry.get().strip().capitalize()
+                user = self.setup.name_entry.get().strip().capitalize()
 
                 if not user:
                     user = "Anonymous"
@@ -470,9 +576,13 @@ class Game():
                 # ----- sort the score list and keep the top 3 ------ 
                 self.best_scores = sorted(self.best_scores, key=lambda x: (-x["score"], time_to_second_int(x['time'])))[:3]
 
-                name_entry.unbind('<Return>') # cancel the return button value after the pop is already closed
-                username_popup.destroy() # close the pop up message after the user has entered their username
+                self.setup.name_entry.unbind('<Return>') # cancel the return button value after the pop is already closed
                 
+                # remove all widgets from the pop up event
+                self.setup.screen_game.delete(self.setup.popup_background) # close the pop up message after the user has entered their username
+                self.setup.screen_game.delete(self.setup.name_entry_window) # close the pop up message after the user has entered their username
+                self.setup.name_entry.destroy()
+
                 # save the updated score list in the file
                 print("Try updating the list.")
                 with open(file_path, "w") as file:
@@ -490,7 +600,7 @@ class Game():
         '''Display the top3 scores.'''
 
         # ---set the the restart button after a little delay---------------
-        self.setup.window.after(1500, lambda: self.restart_button.place(relx=0.5, rely=0.75, anchor=CENTER))
+        self.setup.window.after(1500, lambda: self.setup.restart_button.place(relx=0.5, rely=0.75, anchor=CENTER))
 
         top_scores = self.best_scores[:3]
         print("\n --- Top 3 scores --- ")
