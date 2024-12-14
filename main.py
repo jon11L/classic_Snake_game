@@ -30,15 +30,11 @@ class GameConfig():
         self.collision_wall_sound = pygame.mixer.Sound("assets/sounds/collision_wall.wav")
         self.collision_wall_sound.set_volume(0.5)
         self.collision_self_sound = pygame.mixer.Sound("assets/sounds/collision_self.wav")
-        self.collision_self_sound.set_volume(0.3)
+        self.collision_self_sound.set_volume(0.1)
         self.collision_food_sound = pygame.mixer.Sound("assets/sounds/food_sound.wav")
-        self.collision_food_sound.set_volume(0.4)
+        self.collision_food_sound.set_volume(0.1)
 
 
-        self.create_window()
-        self.set_window_and_widgets()
-
-        
         # pre initialize gif frames
         self.gif_imgage = None
         self.gif_frames = []
@@ -55,32 +51,40 @@ class GameConfig():
         # Use grid for better control of placement  of the widgets 
         self.top_frame = ttk.Frame(self.window)
         self.top_frame.pack(fill='x') 
+        self.top_frame.config(height=30)
+        # self.top_frame.grid_propagate(False)
         self.top_frame.grid_columnconfigure(0, weight=1) # placement for score
-        self.top_frame.grid_columnconfigure(1, weight=0) # placement for Pause button
         self.top_frame.grid_columnconfigure(2, weight=1) # placement for timer
+        self.top_frame.grid_columnconfigure(1, weight=0) # placement for Pause button
+        
 
                 # --- Initialize score label ---
-        self.score_label = tk.Label(self.top_frame, text=f"Score: 0", font=('consolas', 15))
-        self.score_label.grid(row=0, column=0, sticky='e', padx=50, pady=2)
+        self.score_label = tk.Label(self.top_frame, text=f"Score: 0", font=('consolas', 14))
+        self.score_label.grid(row=0, column=0, sticky='e', padx=50, ipady=2)
 
                 # --- Initialize time label ---
-        self.time_label = tk.Label(self.top_frame, text=f"Time: 00:00", font=('consolas', 15))
-        self.time_label.grid(row=0, column=2, sticky='w', padx=50, pady=2)
+        self.time_label = tk.Label(self.top_frame, text=f"Time: 00:00", font=('consolas', 14))
+        self.time_label.grid(row=0, column=2, sticky='w', padx=50, ipady=2)
 
-                # --- creating a exit button to quit the game ---  
+        # --- creating a exit button to quit the game ---  
         exit_button = ttk.Button(self.window,
                                 text='Exit',
                                 command=lambda: self.window.quit()
                                 )
-        exit_button.pack(side=tk.BOTTOM, ipady=1, expand=True, anchor="s")
+        exit_button.pack(side=tk.BOTTOM, ipady=1, expand=True, anchor="center")
 
-                # set the 'black' canva on the screen.
+
+        # set the 'black' canva on the screen.
         self.screen_game = Canvas(self.window,
                                   bg=self.BACKGROUND_COLOR,
                                   width=self.GAME_WIDTH,
                                   height=self.GAME_HEIGHT
                                   )
-        self.screen_game.pack()
+        self.screen_game.pack(fill="both", expand=True) # unpack the black screen
+        # self.screen_game.pack_propagate(False) 
+
+
+
 
         self.center_window()
 
@@ -106,7 +110,7 @@ class GameConfig():
         return tk.Button(self.window, text=text, command=command,
                         font=('consolas', 15, 'bold'),
                         fg="blue", bg="lightblue",
-                        padx=10, pady=10,
+                        padx=10, pady=5,
                         borderwidth=1,
                         relief=RAISED,
                         overrelief=GROOVE,
@@ -122,7 +126,10 @@ class GameConfig():
                             command=self.game.tooggle_pause,
                             bg="lightblue",
                             fg="blue",
+                            
                             relief="groove")
+        # self.pause_button.grid(row=0, column=1, sticky="ew", padx=10, pady=2)  # Use grid
+
         
 
         # --- create a start button for the game to start ---
@@ -142,6 +149,8 @@ class GameConfig():
                                                     text="version 2: Wall limitation / ON. ",
                                                     command=lambda: self.game.start_game_with_mode(2)
                                                     )
+        
+
     def show_username_popup(self):
         """Create a pop-up input dialog attached to the parent window."""
         # Create the popup window
@@ -188,8 +197,8 @@ class GameConfig():
         self.refresh_gif_frames()
 
 
-    def load_gif(self, gif_path):
-
+    def load_gif(self, gif_path, fix_frame_on_end=True):
+        '''Load the gif file and set the frames.'''
         self.gif_image = Image.open(gif_path)  # Open the GIF file
         self.gif_frames = []  # To store the individual frames
         # Extract and store frames
@@ -198,29 +207,41 @@ class GameConfig():
                 frame = self.gif_image.copy()
                 self.gif_frames.append(ImageTk.PhotoImage(frame))
                 self.gif_image.seek(self.gif_image.tell() + 1)  # Move to the next frame
+
         except EOFError:
-            pass  # pass by the end of gif's frame to restartEnd of GIF frames
+            if fix_frame_on_end and self.gif_frames:
+                self.fixed_frame = self.gif_frames[22] # get a fixed frame from the frame list
+
+            else:
+                self.fixed_frame = None
+
+            # pass  # pass by the end of gif's frame to restart End of GIF frames
 
         self.gif_frame_index = 0  # Start with the first frame
 
 
-
     def refresh_gif_frames(self):
         """Animate the GIF on the canvas."""
-        if self.gif_frames:  # Ensure frames are loaded
+        if self.gif_frame_index < len(self.gif_frames):  # Ensure frames are loaded
             frame = self.gif_frames[self.gif_frame_index]
             self.screen_game.itemconfig(self.gif_item, image=frame)
+            self.gif_frame_index += 1
 
-            # Update the frame index
-            self.gif_frame_index = (self.gif_frame_index + 1) % len(self.gif_frames)
 
-            # Schedule the next frame update
+            # Schedule the next frame's Gif update
             self.window.after(100, self.refresh_gif_frames)  # Adjust timing as needed
+
+        else:
+            if self.fixed_frame:
+                self.screen_game.itemconfig(self.gif_item, image=self.fixed_frame)
+
+                self.window.after(100, lambda: self.set_window_and_widgets())
+
 
 
     def show_gif(self, gif_path):
         """Show the GIF on the canvas."""
-        self.load_gif(gif_path, size=(200, 200))  # Load frames and resize
+        self.load_gif(gif_path)  # Load frames and resize
         self.gif_item = self.screen_game.create_image(
             self.GAME_WIDTH // 2, self.GAME_HEIGHT // 3, anchor="center"
         )
@@ -252,7 +273,7 @@ class Game():
         self.SNAKE_COLOR = "green"
         self.FOOD_COLOR = "darkred"
         self.SPACE_SIZE = 50
-        self.BODY_SIZE = 3 # base size of snake's body
+        # self.BODY_SIZE = 3 # base size of snake's body
 
         self.BASE_SPEED = 500 # default speed when game starts
         self.MAX_SPEED = 50   # Minimum speed (maximum difficulty)
@@ -263,7 +284,12 @@ class Game():
         # get the scren configuration from the GameConfig class
         self.setup = GameConfig(self)
 
+        self.setup.create_window()
+
         self.setup.display_gif('assets/image/snake1.gif')
+        # self.setup.set_window_and_widgets()
+
+
 
 
 
@@ -409,6 +435,7 @@ class Game():
         if self.check_collision():
             self.game_over()
             return
+        
         else:
             # create the new snake's head
             square = self.setup.screen_game.create_rectangle(
@@ -636,7 +663,7 @@ class Game():
 class Snake:
     def __init__(self, game: Game):
         self.game = game
-        self.body_size = game.BODY_SIZE
+        self.body_size = 3 # game.BODY_SIZE
         self.coordinates = []
         self.squares = []
         self.direction_queue = [] # Queue to handle rapid direction changes.
